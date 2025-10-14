@@ -292,18 +292,33 @@ function sendImage(file) {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        const message = {
-            type: 'send_message',
-            to: currentChatWith,
-            content: e.target.result,
-            content_type: 'image',
-            timestamp: Date.now()
-        };
+        let message, chatKey;
+
+        if (currentChatType === 'group') {
+            // 群聊图片
+            message = {
+                type: 'send_group_message',
+                group_id: currentChatWith,
+                content: e.target.result,
+                content_type: 'image',
+                timestamp: Date.now()
+            };
+            chatKey = currentChatWith;
+        } else {
+            // 私聊图片
+            message = {
+                type: 'send_message',
+                to: currentChatWith,
+                content: e.target.result,
+                content_type: 'image',
+                timestamp: Date.now()
+            };
+            chatKey = getChatKey(currentUser, currentChatWith);
+        }
 
         ws.send(JSON.stringify(message));
 
         // 添加到本地消息列表
-        const chatKey = getChatKey(currentUser, currentChatWith);
         if (!messages.has(chatKey)) {
             messages.set(chatKey, []);
         }
