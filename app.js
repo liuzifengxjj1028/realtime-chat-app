@@ -399,15 +399,13 @@ function displayMessage(msg) {
     messageDiv.appendChild(timeDiv);
 
     // 如果是自己发送的消息，添加撤回按钮
-    console.log('消息发送者:', msg.from, '当前用户:', currentUser, '是否相等:', msg.from === currentUser);
     if (msg.from === currentUser) {
         const recallBtn = document.createElement('button');
         recallBtn.className = 'recall-btn';
         recallBtn.textContent = '撤回';
-        recallBtn.style.cssText = 'font-size: 10px; padding: 1px 4px; margin-left: 6px; background: rgba(255,255,255,0.15); border: none; border-radius: 3px; color: rgba(255,255,255,0.6); cursor: pointer;';
+        recallBtn.style.cssText = 'font-size: 11px; padding: 3px 8px; margin-left: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; color: #fff; cursor: pointer; font-weight: 500;';
         recallBtn.onclick = () => recallMessage(msg.timestamp);
         timeDiv.appendChild(recallBtn);
-        console.log('撤回按钮已添加');
     }
 
     messagesContainer.appendChild(messageDiv);
