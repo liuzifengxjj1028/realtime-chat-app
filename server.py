@@ -81,6 +81,9 @@ async def handle_message(ws, data, current_username):
     elif msg_type == 'mark_as_read':
         await handle_mark_as_read(data, current_username)
 
+    elif msg_type == 'recall_message':
+        await handle_recall_message(data, current_username)
+
     elif msg_type == 'create_group':
         await handle_create_group(ws, data, current_username)
 
@@ -197,6 +200,70 @@ async def handle_mark_as_read(data, current_user):
         })
 
     print(f'消息已读: {from_user} -> {current_user}')
+
+
+async def handle_recall_message(data, current_user):
+    """处理撤回消息"""
+    timestamp = data.get('timestamp')
+    group_id = data.get('group_id')
+    to_user = data.get('to')
+
+    if not timestamp:
+        return
+
+    if group_id:
+        # 群聊消息撤回
+        if group_id not in groups_store:
+            return
+
+        group = groups_store[group_id]
+
+        # 检查是否是群成员
+        if current_user not in group['members']:
+            return
+
+        # 从消息存储中删除
+        if group_id in messages_store:
+            messages_store[group_id] = [
+                msg for msg in messages_store[group_id]
+                if not (msg.get('timestamp') == timestamp and msg.get('from') == current_user)
+            ]
+
+        # 通知所有群成员（除了自己）
+        for member in group['members']:
+            if member != current_user and member in connected_users:
+                await connected_users[member].send_json({
+                    'type': 'message_recalled',
+                    'timestamp': timestamp,
+                    'group_id': group_id,
+                    'from': current_user
+                })
+
+        print(f'群聊消息撤回: {current_user} 在群 {group_id} 中撤回消息 {timestamp}')
+
+    else:
+        # 私聊消息撤回
+        if not to_user:
+            return
+
+        chat_key = get_chat_key(current_user, to_user)
+
+        # 从消息存储中删除
+        if chat_key in messages_store:
+            messages_store[chat_key] = [
+                msg for msg in messages_store[chat_key]
+                if not (msg.get('timestamp') == timestamp and msg.get('from') == current_user)
+            ]
+
+        # 通知对方
+        if to_user in connected_users:
+            await connected_users[to_user].send_json({
+                'type': 'message_recalled',
+                'timestamp': timestamp,
+                'from': current_user
+            })
+
+        print(f'私聊消息撤回: {current_user} 撤回发给 {to_user} 的消息 {timestamp}')
 
 
 async def broadcast(message, exclude=None):

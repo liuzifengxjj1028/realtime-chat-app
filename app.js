@@ -96,6 +96,9 @@ function handleMessage(data) {
         case 'message_read':
             markMessageAsRead(data);
             break;
+        case 'message_recalled':
+            handleMessageRecalled(data);
+            break;
         case 'user_online':
             addContact(data.username);
             break;
@@ -395,6 +398,16 @@ function displayMessage(msg) {
     timeDiv.textContent = formatTime(msg.timestamp);
     messageDiv.appendChild(timeDiv);
 
+    // 如果是自己发送的消息，添加撤回按钮
+    if (msg.from === currentUser) {
+        const recallBtn = document.createElement('button');
+        recallBtn.className = 'recall-btn';
+        recallBtn.textContent = '撤回';
+        recallBtn.style.cssText = 'font-size: 11px; padding: 2px 6px; margin-left: 8px; background: rgba(255,255,255,0.2); border: none; border-radius: 3px; color: rgba(255,255,255,0.7); cursor: pointer;';
+        recallBtn.onclick = () => recallMessage(msg.timestamp);
+        timeDiv.appendChild(recallBtn);
+    }
+
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
@@ -405,6 +418,75 @@ function sendReadReceipt(username) {
         type: 'mark_as_read',
         from: username
     }));
+}
+
+// 撤回消息
+function recallMessage(timestamp) {
+    if (!currentChatWith) return;
+
+    const message = {
+        type: 'recall_message',
+        timestamp: timestamp
+    };
+
+    if (currentChatType === 'group') {
+        message.group_id = currentChatWith;
+    } else {
+        message.to = currentChatWith;
+    }
+
+    ws.send(JSON.stringify(message));
+
+    // 本地删除消息
+    removeMessageFromUI(timestamp);
+    removeMessageFromStore(timestamp);
+}
+
+// 从UI中删除消息
+function removeMessageFromUI(timestamp) {
+    const messageEl = messagesContainer.querySelector(`[data-timestamp="${timestamp}"]`);
+    if (messageEl) {
+        messageEl.remove();
+    }
+}
+
+// 从本地存储中删除消息
+function removeMessageFromStore(timestamp) {
+    const chatKey = currentChatType === 'group' ? currentChatWith : getChatKey(currentUser, currentChatWith);
+    const chatMessages = messages.get(chatKey);
+    if (chatMessages) {
+        const index = chatMessages.findIndex(msg => msg.timestamp === timestamp);
+        if (index !== -1) {
+            chatMessages.splice(index, 1);
+        }
+    }
+}
+
+// 接收撤回消息通知
+function handleMessageRecalled(data) {
+    removeMessageFromUI(data.timestamp);
+
+    // 从相应的消息存储中删除
+    if (data.group_id) {
+        // 群聊消息
+        const chatMessages = messages.get(data.group_id);
+        if (chatMessages) {
+            const index = chatMessages.findIndex(msg => msg.timestamp === data.timestamp);
+            if (index !== -1) {
+                chatMessages.splice(index, 1);
+            }
+        }
+    } else {
+        // 私聊消息
+        const chatKey = getChatKey(currentUser, data.from);
+        const chatMessages = messages.get(chatKey);
+        if (chatMessages) {
+            const index = chatMessages.findIndex(msg => msg.timestamp === data.timestamp);
+            if (index !== -1) {
+                chatMessages.splice(index, 1);
+            }
+        }
+    }
 }
 
 // 标记消息为已读
