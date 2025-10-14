@@ -148,6 +148,7 @@ async def handle_send_message(data, from_user):
     content = data.get('content')
     content_type = data.get('content_type', 'text')
     timestamp = data.get('timestamp', int(datetime.now().timestamp() * 1000))
+    quoted_message = data.get('quoted_message')
 
     if not to_user or not content or not from_user:
         return
@@ -165,6 +166,10 @@ async def handle_send_message(data, from_user):
         'timestamp': timestamp,
         'read': False
     }
+
+    # 如果有引用消息，添加到消息中
+    if quoted_message:
+        message['quoted_message'] = quoted_message
 
     messages_store[chat_key].append(message)
 
@@ -332,6 +337,7 @@ async def handle_send_group_message(data, from_user):
     content = data.get('content')
     content_type = data.get('content_type', 'text')
     timestamp = data.get('timestamp', int(datetime.now().timestamp() * 1000))
+    quoted_message = data.get('quoted_message')
 
     if not group_id or not content:
         return
@@ -358,6 +364,10 @@ async def handle_send_group_message(data, from_user):
         'timestamp': timestamp,
         'read': False
     }
+
+    # 如果有引用消息，添加到消息中
+    if quoted_message:
+        message['quoted_message'] = quoted_message
 
     messages_store[group_id].append(message)
 
