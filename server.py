@@ -14,6 +14,7 @@ import aiohttp_cors
 
 # 存储连接的用户
 connected_users = {}  # {username: websocket}
+user_ids = {}  # {username: userId} - 跟踪用户ID
 # 存储消息（简单的内存存储）
 messages_store = {}  # {chat_key: [messages]}
 # 存储群组
@@ -90,6 +91,7 @@ async def handle_message(ws, data, current_username):
 async def handle_register(ws, data):
     """处理用户注册"""
     username = data.get('username', '').strip()
+    user_id = data.get('userId', '')
 
     if not username:
         await ws.send_json({
@@ -105,7 +107,10 @@ async def handle_register(ws, data):
         })
         return
 
-    if username in connected_users:
+    # 检查是否是同一用户重新登录（通过userId识别）
+    is_returning_user = user_id and username in user_ids and user_ids[username] == user_id
+
+    if username in connected_users and not is_returning_user:
         await ws.send_json({
             'type': 'register_error',
             'message': '昵称已被使用，请换一个'
@@ -114,6 +119,8 @@ async def handle_register(ws, data):
 
     # 注册成功
     connected_users[username] = ws
+    if user_id:
+        user_ids[username] = user_id
 
     # 发送注册成功消息
     await ws.send_json({

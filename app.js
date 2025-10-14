@@ -1,11 +1,30 @@
 // WebSocket 连接
 let ws = null;
 let currentUser = null;
+let currentUserId = null; // 用户唯一ID
 let currentChatWith = null;
 let currentChatType = null; // 'user' or 'group'
 let contacts = new Map();
 let groups = new Map(); // 存储群组信息 {groupId: {name, members}}
 let messages = new Map(); // 存储每个对话的消息
+
+// 用户ID管理
+function generateUserId() {
+    return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function getUserCredentials() {
+    const stored = localStorage.getItem('chat_user_credentials');
+    return stored ? JSON.parse(stored) : null;
+}
+
+function saveUserCredentials(userId, username) {
+    localStorage.setItem('chat_user_credentials', JSON.stringify({ userId, username }));
+}
+
+function clearUserCredentials() {
+    localStorage.removeItem('chat_user_credentials');
+}
 
 // DOM 元素
 const loginScreen = document.getElementById('login-screen');
@@ -27,6 +46,7 @@ const cancelGroupBtn = document.getElementById('cancel-group-btn');
 const confirmGroupBtn = document.getElementById('confirm-group-btn');
 const groupNameInput = document.getElementById('group-name-input');
 const memberList = document.getElementById('member-list');
+const logoutBtn = document.getElementById('logout-btn');
 
 // 连接 WebSocket
 function connectWebSocket() {
@@ -405,6 +425,17 @@ loginBtn.addEventListener('click', () => {
     loginBtn.disabled = true;
     errorMsg.textContent = '';
 
+    // 获取或生成用户ID
+    let credentials = getUserCredentials();
+    if (!credentials || credentials.username !== nickname) {
+        // 新用户或更换昵称，生成新ID
+        currentUserId = generateUserId();
+        saveUserCredentials(currentUserId, nickname);
+    } else {
+        // 老用户，使用已有ID
+        currentUserId = credentials.userId;
+    }
+
     // 连接 WebSocket 并注册
     if (!ws || ws.readyState !== WebSocket.OPEN) {
         connectWebSocket();
@@ -414,14 +445,16 @@ loginBtn.addEventListener('click', () => {
                 clearInterval(checkConnection);
                 ws.send(JSON.stringify({
                     type: 'register',
-                    username: nickname
+                    username: nickname,
+                    userId: currentUserId
                 }));
             }
         }, 100);
     } else {
         ws.send(JSON.stringify({
             type: 'register',
-            username: nickname
+            username: nickname,
+            userId: currentUserId
         }));
     }
 });
@@ -446,6 +479,36 @@ imageInput.addEventListener('change', (e) => {
         sendImage(file);
     }
     e.target.value = ''; // 清空选择
+});
+
+// 登出/切换用户
+logoutBtn.addEventListener('click', () => {
+    if (confirm('确定要切换用户吗？')) {
+        // 关闭 WebSocket 连接
+        if (ws) {
+            ws.close();
+        }
+
+        // 清空本地状态（但保留用户ID和昵称）
+        currentUser = null;
+        currentChatWith = null;
+        currentChatType = null;
+        contacts.clear();
+        groups.clear();
+        messages.clear();
+
+        // 返回登录界面
+        chatScreen.style.display = 'none';
+        loginScreen.style.display = 'flex';
+
+        // 清空输入框
+        messageInput.value = '';
+
+        // 重新连接 WebSocket
+        setTimeout(() => {
+            connectWebSocket();
+        }, 500);
+    }
 });
 
 // 群聊相关功能
@@ -641,7 +704,14 @@ function sendMessageWithGroup() {
 // 替换sendMessage函数以支持群聊
 sendMessage = sendMessageWithGroup;
 
-// 页面加载时连接 WebSocket
+// 页面加载时的初始化
 window.addEventListener('load', () => {
     connectWebSocket();
+
+    // 自动填充上次使用的昵称
+    const credentials = getUserCredentials();
+    if (credentials && credentials.username) {
+        nicknameInput.value = credentials.username;
+        nicknameInput.placeholder = `上次使用: ${credentials.username}`;
+    }
 });
