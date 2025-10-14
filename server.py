@@ -139,7 +139,7 @@ async def handle_send_message(data, from_user):
     content_type = data.get('content_type', 'text')
     timestamp = data.get('timestamp', int(datetime.now().timestamp() * 1000))
 
-    if not to_user or not content:
+    if not to_user or not content or not from_user:
         return
 
     # 保存消息

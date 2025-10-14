@@ -82,6 +82,15 @@ function handleMessage(data) {
         case 'user_offline':
             removeContact(data.username);
             break;
+        case 'group_created':
+            onGroupCreated(data);
+            break;
+        case 'group_list':
+            updateGroupsList(data.groups);
+            break;
+        case 'new_group_message':
+            receiveGroupMessage(data);
+            break;
     }
 }
 
@@ -166,6 +175,7 @@ function removeContact(username) {
 // 选择联系人
 function selectContact(username) {
     currentChatWith = username;
+    currentChatType = 'user';
     chatWithName.textContent = username;
 
     // 更新联系人列表样式
@@ -506,24 +516,7 @@ function createGroup() {
     closeCreateGroupModal();
 }
 
-// 更新handleMessage函数以支持群组
-const originalHandleMessage = handleMessage;
-function handleMessageWithGroups(data) {
-    switch(data.type) {
-        case 'group_created':
-            onGroupCreated(data);
-            break;
-        case 'group_list':
-            updateGroupsList(data.groups);
-            break;
-        case 'new_group_message':
-            receiveGroupMessage(data);
-            break;
-        default:
-            originalHandleMessage(data);
-    }
-}
-
+// 群组消息处理函数
 function onGroupCreated(data) {
     const group = {
         id: data.group_id,
@@ -645,17 +638,8 @@ function sendMessageWithGroup() {
     }
 }
 
-// 替换函数
-handleMessage = handleMessageWithGroups;
+// 替换sendMessage函数以支持群聊
 sendMessage = sendMessageWithGroup;
-
-// 修改selectContact以设置currentChatType
-const originalSelectContact = selectContact;
-function selectContactWithType(username) {
-    currentChatType = 'user';
-    originalSelectContact(username);
-}
-selectContact = selectContactWithType;
 
 // 页面加载时连接 WebSocket
 window.addEventListener('load', () => {
