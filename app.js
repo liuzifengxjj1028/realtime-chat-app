@@ -220,10 +220,11 @@ function selectContact(username) {
 }
 
 // 加载聊天记录
-function loadChatHistory(username) {
+function loadChatHistory(chatWith) {
     messagesContainer.innerHTML = '';
 
-    const chatKey = getChatKey(currentUser, username);
+    // 对于群聊直接使用group_id，对于私聊使用getChatKey
+    const chatKey = currentChatType === 'group' ? chatWith : getChatKey(currentUser, chatWith);
     const chatMessages = messages.get(chatKey) || [];
 
     if (chatMessages.length === 0) {
@@ -349,6 +350,17 @@ function displayMessage(msg) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${msg.from === currentUser ? 'sent' : 'received'}`;
     messageDiv.dataset.timestamp = msg.timestamp;
+
+    // 如果是群聊消息且不是自己发的，显示发送者名字
+    if (currentChatType === 'group' && msg.from !== currentUser) {
+        const senderName = document.createElement('div');
+        senderName.className = 'message-sender';
+        senderName.textContent = msg.from;
+        senderName.style.fontSize = '12px';
+        senderName.style.color = '#666';
+        senderName.style.marginBottom = '4px';
+        messageDiv.appendChild(senderName);
+    }
 
     const contentDiv = document.createElement('div');
     contentDiv.className = `message-content ${msg.read ? 'read' : ''}`;
