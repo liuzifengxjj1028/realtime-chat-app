@@ -708,10 +708,26 @@ sendMessage = sendMessageWithGroup;
 window.addEventListener('load', () => {
     connectWebSocket();
 
-    // 自动填充上次使用的昵称
+    // 检查是否有保存的用户信息，如果有则自动登录
     const credentials = getUserCredentials();
-    if (credentials && credentials.username) {
+    if (credentials && credentials.username && credentials.userId) {
+        // 自动登录
+        currentUserId = credentials.userId;
         nicknameInput.value = credentials.username;
-        nicknameInput.placeholder = `上次使用: ${credentials.username}`;
+
+        // 等待 WebSocket 连接建立后自动登录
+        const autoLogin = setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                clearInterval(autoLogin);
+                ws.send(JSON.stringify({
+                    type: 'register',
+                    username: credentials.username,
+                    userId: credentials.userId
+                }));
+            }
+        }, 100);
+    } else {
+        // 没有保存的信息，显示登录界面
+        nicknameInput.placeholder = '请输入你的昵称';
     }
 });
