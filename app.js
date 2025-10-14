@@ -398,8 +398,18 @@ function displayMessage(msg) {
     // 如果消息包含引用，显示引用内容
     if (msg.quoted_message) {
         const quotedDiv = document.createElement('div');
-        quotedDiv.style.cssText = 'background: rgba(0,0,0,0.1); border-left: 3px solid rgba(255,255,255,0.5); padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px;';
-        quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.7); font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: rgba(255,255,255,0.6);">"${msg.quoted_message.content || '[图片]'}"</div>`;
+        const isSentMessage = msg.from === currentUser;
+
+        if (isSentMessage) {
+            // 自己发送的消息（蓝色气泡）- 使用白色文字
+            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.15); border-left: 3px solid rgba(255,255,255,0.6); padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px;';
+            quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.9); font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: rgba(255,255,255,0.8);">"${msg.quoted_message.content || '[图片]'}"</div>`;
+        } else {
+            // 接收的消息（灰色气泡）- 使用深色文字
+            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.08); border-left: 3px solid #6c5ce7; padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px;';
+            quotedDiv.innerHTML = `<div style="color: #333; font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: #555;">"${msg.quoted_message.content || '[图片]'}"</div>`;
+        }
+
         messageDiv.appendChild(quotedDiv);
     }
 
