@@ -2,7 +2,9 @@
 let ws = null;
 let currentUser = null;
 let currentChatWith = null;
+let currentChatType = null; // 'user' or 'group'
 let contacts = new Map();
+let groups = new Map(); // 存储群组信息 {groupId: {name, members}}
 let messages = new Map(); // 存储每个对话的消息
 
 // DOM 元素
@@ -18,6 +20,13 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const imageInput = document.getElementById('image-input');
 const chatWithName = document.getElementById('chat-with-name');
+const createGroupBtn = document.getElementById('create-group-btn');
+const createGroupModal = document.getElementById('create-group-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const cancelGroupBtn = document.getElementById('cancel-group-btn');
+const confirmGroupBtn = document.getElementById('confirm-group-btn');
+const groupNameInput = document.getElementById('group-name-input');
+const memberList = document.getElementById('member-list');
 
 // 连接 WebSocket
 function connectWebSocket() {
@@ -428,6 +437,225 @@ imageInput.addEventListener('change', (e) => {
     }
     e.target.value = ''; // 清空选择
 });
+
+// 群聊相关功能
+
+// 打开创建群聊弹窗
+createGroupBtn.addEventListener('click', () => {
+    openCreateGroupModal();
+});
+
+// 关闭弹窗
+closeModalBtn.addEventListener('click', closeCreateGroupModal);
+cancelGroupBtn.addEventListener('click', closeCreateGroupModal);
+
+// 创建群聊
+confirmGroupBtn.addEventListener('click', () => {
+    createGroup();
+});
+
+function openCreateGroupModal() {
+    // 清空之前的输入
+    groupNameInput.value = '';
+    memberList.innerHTML = '';
+
+    // 加载联系人列表
+    contacts.forEach((_, username) => {
+        const memberItem = document.createElement('div');
+        memberItem.className = 'member-item';
+        memberItem.innerHTML = `
+            <input type="checkbox" id="member-${username}" value="${username}">
+            <label for="member-${username}">${username}</label>
+        `;
+        memberList.appendChild(memberItem);
+    });
+
+    createGroupModal.classList.add('show');
+}
+
+function closeCreateGroupModal() {
+    createGroupModal.classList.remove('show');
+}
+
+function createGroup() {
+    const groupName = groupNameInput.value.trim();
+
+    if (!groupName) {
+        alert('请输入群名称');
+        return;
+    }
+
+    // 获取选中的成员
+    const selectedMembers = [];
+    memberList.querySelectorAll('input[type="checkbox"]:checked').forEach(checkbox => {
+        selectedMembers.push(checkbox.value);
+    });
+
+    if (selectedMembers.length < 2) {
+        alert('请至少选择2个成员');
+        return;
+    }
+
+    // 发送创建群组请求
+    ws.send(JSON.stringify({
+        type: 'create_group',
+        name: groupName,
+        members: selectedMembers
+    }));
+
+    closeCreateGroupModal();
+}
+
+// 更新handleMessage函数以支持群组
+const originalHandleMessage = handleMessage;
+function handleMessageWithGroups(data) {
+    switch(data.type) {
+        case 'group_created':
+            onGroupCreated(data);
+            break;
+        case 'group_list':
+            updateGroupsList(data.groups);
+            break;
+        case 'new_group_message':
+            receiveGroupMessage(data);
+            break;
+        default:
+            originalHandleMessage(data);
+    }
+}
+
+function onGroupCreated(data) {
+    const group = {
+        id: data.group_id,
+        name: data.name,
+        members: data.members
+    };
+    groups.set(data.group_id, group);
+    addGroupToList(data.group_id, data.name, data.members);
+}
+
+function updateGroupsList(groupsList) {
+    groupsList.forEach(group => {
+        groups.set(group.id, group);
+        addGroupToList(group.id, group.name, group.members);
+    });
+}
+
+function addGroupToList(groupId, groupName, members) {
+    // 检查是否已存在
+    const existing = contactsList.querySelector(`[data-group-id="${groupId}"]`);
+    if (existing) return;
+
+    const groupItem = document.createElement('div');
+    groupItem.className = 'contact-item';
+    groupItem.dataset.groupId = groupId;
+    groupItem.innerHTML = `
+        <div class="name">
+            <span class="group-indicator">群</span>
+            ${groupName}
+        </div>
+        <div class="status">${members.length} 人</div>
+    `;
+
+    groupItem.addEventListener('click', () => {
+        selectGroup(groupId, groupName);
+    });
+
+    contactsList.appendChild(groupItem);
+}
+
+function selectGroup(groupId, groupName) {
+    currentChatWith = groupId;
+    currentChatType = 'group';
+    chatWithName.textContent = groupName + ' (群聊)';
+
+    // 更新样式
+    document.querySelectorAll('.contact-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const selectedGroup = contactsList.querySelector(`[data-group-id="${groupId}"]`);
+    if (selectedGroup) {
+        selectedGroup.classList.add('active');
+    }
+
+    // 启用输入
+    messageInput.disabled = false;
+    sendBtn.disabled = false;
+    messageInput.focus();
+
+    // 加载群聊记录
+    loadChatHistory(groupId);
+}
+
+function receiveGroupMessage(data) {
+    const chatKey = data.group_id;
+
+    if (!messages.has(chatKey)) {
+        messages.set(chatKey, []);
+    }
+    messages.get(chatKey).push(data);
+
+    // 如果正在查看这个群聊，显示消息
+    if (currentChatWith === data.group_id && currentChatType === 'group') {
+        displayMessage(data);
+    }
+}
+
+// 修改sendMessage支持群聊
+const originalSendMessage = sendMessage;
+function sendMessageWithGroup() {
+    const text = messageInput.value.trim();
+
+    if (!text || !currentChatWith) return;
+
+    if (currentChatType === 'group') {
+        // 发送群消息
+        const message = {
+            type: 'send_group_message',
+            group_id: currentChatWith,
+            content: text,
+            content_type: 'text',
+            timestamp: Date.now()
+        };
+
+        ws.send(JSON.stringify(message));
+
+        // 添加到本地消息列表
+        const chatKey = currentChatWith;
+        if (!messages.has(chatKey)) {
+            messages.set(chatKey, []);
+        }
+        messages.get(chatKey).push({
+            ...message,
+            from: currentUser,
+            read: false
+        });
+
+        // 显示消息
+        displayMessage({
+            ...message,
+            from: currentUser,
+            read: false
+        });
+
+        messageInput.value = '';
+    } else {
+        // 原来的用户消息逻辑
+        originalSendMessage();
+    }
+}
+
+// 替换函数
+handleMessage = handleMessageWithGroups;
+sendMessage = sendMessageWithGroup;
+
+// 修改selectContact以设置currentChatType
+const originalSelectContact = selectContact;
+function selectContactWithType(username) {
+    currentChatType = 'user';
+    originalSelectContact(username);
+}
+selectContact = selectContactWithType;
 
 // 页面加载时连接 WebSocket
 window.addEventListener('load', () => {

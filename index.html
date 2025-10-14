@@ -118,6 +118,23 @@
             opacity: 0.9;
         }
 
+        .create-group-btn {
+            margin-top: 15px;
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .create-group-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
         .contacts-list {
             flex: 1;
             overflow-y: auto;
@@ -315,6 +332,145 @@
             margin-top: 10px;
             font-size: 14px;
         }
+
+        /* 群组标识 */
+        .group-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        /* 创建群组弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            font-size: 20px;
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .member-list {
+            margin-bottom: 20px;
+        }
+
+        .member-item {
+            padding: 12px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .member-item:hover {
+            background: #f8f9fa;
+        }
+
+        .member-item input[type="checkbox"] {
+            margin-right: 10px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .modal-btn:hover {
+            opacity: 0.9;
+        }
+
+        .modal-btn.primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .modal-btn.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -334,6 +490,7 @@
                 <div class="sidebar-header">
                     <h2 id="current-user-name">用户</h2>
                     <p>在线用户</p>
+                    <button class="create-group-btn" id="create-group-btn">+ 创建群聊</button>
                 </div>
                 <div class="contacts-list" id="contacts-list">
                     <!-- 通讯录将动态加载 -->
@@ -366,6 +523,24 @@
                     <input type="text" id="message-input" placeholder="输入消息..." disabled>
                     <button id="send-btn" disabled>发送</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 创建群组弹窗 -->
+    <div class="modal" id="create-group-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>创建群聊</h3>
+                <button class="close-btn" id="close-modal-btn">&times;</button>
+            </div>
+            <input type="text" class="modal-input" id="group-name-input" placeholder="输入群名称（最多20个字符）" maxlength="20">
+            <div class="member-list" id="member-list">
+                <!-- 成员列表将动态加载 -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="cancel-group-btn">取消</button>
+                <button class="modal-btn primary" id="confirm-group-btn">创建</button>
             </div>
         </div>
     </div>
