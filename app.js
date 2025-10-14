@@ -7,6 +7,7 @@ let currentChatType = null; // 'user' or 'group'
 let contacts = new Map();
 let groups = new Map(); // 存储群组信息 {groupId: {name, members}}
 let messages = new Map(); // 存储每个对话的消息
+let quotedMessage = null; // 当前被引用的消息
 
 // 用户ID管理
 function generateUserId() {
@@ -47,6 +48,10 @@ const confirmGroupBtn = document.getElementById('confirm-group-btn');
 const groupNameInput = document.getElementById('group-name-input');
 const memberList = document.getElementById('member-list');
 const logoutBtn = document.getElementById('logout-btn');
+const quotePreview = document.getElementById('quote-preview');
+const quoteUser = document.getElementById('quote-user');
+const quoteContent = document.getElementById('quote-content');
+const cancelQuoteBtn = document.getElementById('cancel-quote');
 
 // 连接 WebSocket
 function connectWebSocket() {
@@ -266,6 +271,15 @@ function sendMessage() {
         timestamp: Date.now()
     };
 
+    // 如果有引用消息，添加引用信息
+    if (quotedMessage) {
+        message.quoted_message = {
+            from: quotedMessage.from,
+            content: quotedMessage.content_type === 'image' ? '[图片]' : quotedMessage.content,
+            timestamp: quotedMessage.timestamp
+        };
+    }
+
     ws.send(JSON.stringify(message));
 
     // 添加到本地消息列表
@@ -287,6 +301,7 @@ function sendMessage() {
     });
 
     messageInput.value = '';
+    cancelQuote(); // 清除引用
 }
 
 // 发送图片
@@ -380,6 +395,14 @@ function displayMessage(msg) {
         messageDiv.appendChild(senderName);
     }
 
+    // 如果消息包含引用，显示引用内容
+    if (msg.quoted_message) {
+        const quotedDiv = document.createElement('div');
+        quotedDiv.style.cssText = 'background: rgba(0,0,0,0.1); border-left: 3px solid rgba(255,255,255,0.5); padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px;';
+        quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.7); font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: rgba(255,255,255,0.6);">"${msg.quoted_message.content || '[图片]'}"</div>`;
+        messageDiv.appendChild(quotedDiv);
+    }
+
     const contentDiv = document.createElement('div');
     contentDiv.className = `message-content ${msg.read ? 'read' : ''}`;
 
@@ -407,6 +430,20 @@ function displayMessage(msg) {
         recallBtn.onclick = () => recallMessage(msg.timestamp);
         timeDiv.appendChild(recallBtn);
     }
+
+    // 添加长按/双击引用功能
+    let pressTimer;
+    messageDiv.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            quoteThisMessage(msg);
+        }, 500);
+    });
+    messageDiv.addEventListener('touchend', () => {
+        clearTimeout(pressTimer);
+    });
+    messageDiv.addEventListener('dblclick', () => {
+        quoteThisMessage(msg);
+    });
 
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -517,6 +554,22 @@ function formatTime(timestamp) {
     return `${hours}:${minutes}`;
 }
 
+// 引用消息相关函数
+function quoteThisMessage(msg) {
+    quotedMessage = msg;
+    quotePreview.style.display = 'block';
+    quoteUser.textContent = msg.from;
+    quoteContent.textContent = msg.content_type === 'image' ? '[图片]' : msg.content;
+    messageInput.focus();
+}
+
+function cancelQuote() {
+    quotedMessage = null;
+    quotePreview.style.display = 'none';
+    quoteUser.textContent = '';
+    quoteContent.textContent = '';
+}
+
 // 事件监听
 loginBtn.addEventListener('click', () => {
     const nickname = nicknameInput.value.trim();
@@ -591,6 +644,9 @@ imageInput.addEventListener('change', (e) => {
 });
 
 // 登出/切换用户
+// 取消引用按钮
+cancelQuoteBtn.addEventListener('click', cancelQuote);
+
 logoutBtn.addEventListener('click', () => {
     if (confirm('确定要切换用户吗？')) {
         // 关闭 WebSocket 连接
@@ -783,6 +839,15 @@ function sendMessageWithGroup() {
             timestamp: Date.now()
         };
 
+        // 如果有引用消息，添加引用信息
+        if (quotedMessage) {
+            message.quoted_message = {
+                from: quotedMessage.from,
+                content: quotedMessage.content_type === 'image' ? '[图片]' : quotedMessage.content,
+                timestamp: quotedMessage.timestamp
+            };
+        }
+
         ws.send(JSON.stringify(message));
 
         // 添加到本地消息列表
@@ -804,6 +869,7 @@ function sendMessageWithGroup() {
         });
 
         messageInput.value = '';
+        cancelQuote(); // 清除引用
     } else {
         // 原来的用户消息逻辑
         originalSendMessage();

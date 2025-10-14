@@ -512,6 +512,16 @@
                         <p>从左侧选择一个联系人开始对话</p>
                     </div>
                 </div>
+                <!-- 引用消息显示区域 -->
+                <div id="quote-preview" style="display: none; padding: 8px 16px; background: rgba(0,0,0,0.05); border-left: 3px solid #6c5ce7; margin: 0 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 12px; color: #6c5ce7; font-weight: 500;">回复 <span id="quote-user"></span></div>
+                            <div id="quote-content" style="font-size: 13px; color: #666; margin-top: 2px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+                        </div>
+                        <button id="cancel-quote" style="background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 8px;">×</button>
+                    </div>
+                </div>
                 <div class="input-area">
                     <label for="image-input">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
