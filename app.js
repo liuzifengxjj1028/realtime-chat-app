@@ -403,17 +403,9 @@ function displayMessage(msg) {
         const recallBtn = document.createElement('button');
         recallBtn.className = 'recall-btn';
         recallBtn.textContent = '撤回';
-        recallBtn.style.cssText = 'font-size: 11px; padding: 2px 6px; margin-left: 8px; background: rgba(255,255,255,0.2); border: none; border-radius: 3px; color: rgba(255,255,255,0.7); cursor: pointer; opacity: 0; transition: opacity 0.2s;';
+        recallBtn.style.cssText = 'font-size: 10px; padding: 1px 4px; margin-left: 6px; background: rgba(255,255,255,0.15); border: none; border-radius: 3px; color: rgba(255,255,255,0.6); cursor: pointer;';
         recallBtn.onclick = () => recallMessage(msg.timestamp);
         timeDiv.appendChild(recallBtn);
-
-        // 鼠标悬停时显示撤回按钮
-        messageDiv.addEventListener('mouseenter', () => {
-            recallBtn.style.opacity = '1';
-        });
-        messageDiv.addEventListener('mouseleave', () => {
-            recallBtn.style.opacity = '0';
-        });
     }
 
     messagesContainer.appendChild(messageDiv);
