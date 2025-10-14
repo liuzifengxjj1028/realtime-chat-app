@@ -402,13 +402,22 @@ function displayMessage(msg) {
 
         if (isSentMessage) {
             // 自己发送的消息（蓝色气泡）- 使用白色文字
-            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.15); border-left: 3px solid rgba(255,255,255,0.6); padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px;';
+            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.15); border-left: 3px solid rgba(255,255,255,0.6); padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;';
             quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.9); font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: rgba(255,255,255,0.8);">"${msg.quoted_message.content || '[图片]'}"</div>`;
+            quotedDiv.onmouseover = () => quotedDiv.style.background = 'rgba(0,0,0,0.25)';
+            quotedDiv.onmouseout = () => quotedDiv.style.background = 'rgba(0,0,0,0.15)';
         } else {
             // 接收的消息（灰色气泡）- 使用深色文字
-            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.08); border-left: 3px solid #6c5ce7; padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px;';
+            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.08); border-left: 3px solid #6c5ce7; padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;';
             quotedDiv.innerHTML = `<div style="color: #333; font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: #555;">"${msg.quoted_message.content || '[图片]'}"</div>`;
+            quotedDiv.onmouseover = () => quotedDiv.style.background = 'rgba(0,0,0,0.15)';
+            quotedDiv.onmouseout = () => quotedDiv.style.background = 'rgba(0,0,0,0.08)';
         }
+
+        // 点击引用跳转到原消息
+        quotedDiv.onclick = () => {
+            scrollToQuotedMessage(msg.quoted_message.timestamp);
+        };
 
         messageDiv.appendChild(quotedDiv);
     }
@@ -578,6 +587,34 @@ function cancelQuote() {
     quotePreview.style.display = 'none';
     quoteUser.textContent = '';
     quoteContent.textContent = '';
+}
+
+// 跳转到被引用的消息
+function scrollToQuotedMessage(timestamp) {
+    const targetMessage = messagesContainer.querySelector(`[data-timestamp="${timestamp}"]`);
+
+    if (!targetMessage) {
+        // 消息不在当前视图中（可能已被撤回或在其他对话中）
+        return;
+    }
+
+    // 滚动到目标消息
+    targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // 添加高亮效果
+    const originalTransition = targetMessage.style.transition;
+    const originalBackground = window.getComputedStyle(targetMessage).backgroundColor;
+
+    // 高亮动画
+    targetMessage.style.transition = 'background-color 0.3s ease';
+    targetMessage.style.backgroundColor = 'rgba(108, 92, 231, 0.3)'; // 紫色高亮
+
+    setTimeout(() => {
+        targetMessage.style.backgroundColor = originalBackground;
+        setTimeout(() => {
+            targetMessage.style.transition = originalTransition;
+        }, 300);
+    }, 1000);
 }
 
 // 事件监听
