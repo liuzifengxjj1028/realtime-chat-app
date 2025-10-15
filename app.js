@@ -708,6 +708,7 @@ function showReadDetail(msg) {
 
 // 关闭阅读详情弹窗
 function closeReadDetail() {
+    console.log('❎ 关闭阅读详情模态框');
     readDetailModal.style.display = 'none';
     currentReadDetailMessage = null; // 清除引用
 }
