@@ -465,42 +465,89 @@ function sendMessage() {
 
     if (!text || !currentChatWith) return;
 
-    const message = {
-        type: 'send_message',
-        to: currentChatWith,
-        content: text,
-        content_type: 'text',
-        timestamp: Date.now()
-    };
+    let message, chatKey;
 
-    // 如果有引用消息，添加引用信息
-    if (quotedMessage) {
-        message.quoted_message = {
-            from: quotedMessage.from,
-            content: quotedMessage.content_type === 'image' ? '[图片]' : quotedMessage.content,
-            timestamp: quotedMessage.timestamp
+    if (currentChatType === 'group') {
+        // 群聊消息
+        message = {
+            type: 'send_group_message',
+            group_id: currentChatWith,
+            content: text,
+            content_type: 'text',
+            timestamp: Date.now()
         };
+        chatKey = currentChatWith;
+
+        // 如果有引用消息，添加引用信息
+        if (quotedMessage) {
+            message.quoted_message = {
+                from: quotedMessage.from,
+                content: quotedMessage.content_type === 'image' ? '[图片]' : quotedMessage.content,
+                timestamp: quotedMessage.timestamp
+            };
+        }
+
+        ws.send(JSON.stringify(message));
+
+        // 添加到本地消息列表
+        if (!messages.has(chatKey)) {
+            messages.set(chatKey, []);
+        }
+        messages.get(chatKey).push({
+            ...message,
+            from: currentUser,
+            group_id: currentChatWith,
+            read_by: [currentUser],
+            unread_members: groups.get(currentChatWith)?.members.filter(m => m !== currentUser) || []
+        });
+
+        // 显示消息
+        displayMessage({
+            ...message,
+            from: currentUser,
+            group_id: currentChatWith,
+            read_by: [currentUser],
+            unread_members: groups.get(currentChatWith)?.members.filter(m => m !== currentUser) || []
+        });
+    } else {
+        // 私聊消息
+        message = {
+            type: 'send_message',
+            to: currentChatWith,
+            content: text,
+            content_type: 'text',
+            timestamp: Date.now()
+        };
+
+        // 如果有引用消息，添加引用信息
+        if (quotedMessage) {
+            message.quoted_message = {
+                from: quotedMessage.from,
+                content: quotedMessage.content_type === 'image' ? '[图片]' : quotedMessage.content,
+                timestamp: quotedMessage.timestamp
+            };
+        }
+
+        ws.send(JSON.stringify(message));
+
+        // 添加到本地消息列表
+        chatKey = getChatKey(currentUser, currentChatWith);
+        if (!messages.has(chatKey)) {
+            messages.set(chatKey, []);
+        }
+        messages.get(chatKey).push({
+            ...message,
+            from: currentUser,
+            read: false
+        });
+
+        // 显示消息
+        displayMessage({
+            ...message,
+            from: currentUser,
+            read: false
+        });
     }
-
-    ws.send(JSON.stringify(message));
-
-    // 添加到本地消息列表
-    const chatKey = getChatKey(currentUser, currentChatWith);
-    if (!messages.has(chatKey)) {
-        messages.set(chatKey, []);
-    }
-    messages.get(chatKey).push({
-        ...message,
-        from: currentUser,
-        read: false
-    });
-
-    // 显示消息
-    displayMessage({
-        ...message,
-        from: currentUser,
-        read: false
-    });
 
     messageInput.value = '';
     cancelQuote(); // 清除引用
