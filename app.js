@@ -743,6 +743,36 @@ function displayMessage(msg) {
         const img = document.createElement('img');
         img.src = msg.content;
         contentDiv.appendChild(img);
+    } else if (msg.content_type === 'voice') {
+        // 语音消息
+        const voiceDiv = document.createElement('div');
+        voiceDiv.className = 'voice-message';
+
+        const playBtn = document.createElement('button');
+        playBtn.className = 'voice-play-btn';
+        playBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="8 5 19 12 8 19 8 5"></polygon>
+            </svg>
+        `;
+
+        const voiceInfo = document.createElement('div');
+        voiceInfo.className = 'voice-info';
+
+        const durationText = document.createElement('div');
+        durationText.className = 'voice-duration-text';
+        durationText.textContent = `${msg.duration || 0}"`;
+
+        voiceInfo.appendChild(durationText);
+        voiceDiv.appendChild(playBtn);
+        voiceDiv.appendChild(voiceInfo);
+
+        // 点击播放语音
+        playBtn.onclick = () => {
+            playVoiceMessage(msg.content, playBtn, voiceInfo);
+        };
+
+        contentDiv.appendChild(voiceDiv);
     } else {
         const textDiv = document.createElement('div');
         textDiv.textContent = msg.content;
@@ -1912,3 +1942,365 @@ drawerOverlay.addEventListener('click', () => {
     aiSummaryDrawer.style.display = 'none';
     drawerOverlay.style.display = 'none';
 });
+
+// ==================== 语音消息功能 ====================
+
+// 语音相关DOM元素
+const voiceBtn = document.getElementById('voice-btn');
+const voiceRecorder = document.getElementById('voice-recorder');
+const voicePreview = document.getElementById('voice-preview');
+const inputArea = document.getElementById('input-area');
+const recordingTime = document.getElementById('recording-time');
+const cancelRecordingBtn = document.getElementById('cancel-recording-btn');
+const stopRecordingBtn = document.getElementById('stop-recording-btn');
+const playPreviewBtn = document.getElementById('play-preview-btn');
+const previewDuration = document.getElementById('preview-duration');
+const rerecordBtn = document.getElementById('rerecord-btn');
+const sendVoiceBtn = document.getElementById('send-voice-btn');
+
+// 语音录制相关变量
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingStartTime = null;
+let recordingTimer = null;
+let recordedAudioBlob = null;
+let recordedAudioUrl = null;
+let previewAudio = null;
+
+// 格式化时间显示 (秒数转 mm:ss)
+function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+// 点击语音按钮 - 开始录制
+voiceBtn.addEventListener('click', async () => {
+    if (!currentChatWith) {
+        alert('请先选择一个联系人');
+        return;
+    }
+
+    try {
+        // 请求麦克风权限
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // 初始化MediaRecorder
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        // 监听数据
+        mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+                audioChunks.push(event.data);
+            }
+        };
+
+        // 录制停止时的处理
+        mediaRecorder.onstop = () => {
+            // 停止所有音轨
+            stream.getTracks().forEach(track => track.stop());
+
+            // 创建音频Blob
+            recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            recordedAudioUrl = URL.createObjectURL(recordedAudioBlob);
+
+            // 计算录制时长
+            const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
+            previewDuration.textContent = formatTime(duration);
+
+            // 显示预览界面
+            showVoicePreview();
+        };
+
+        // 开始录制
+        mediaRecorder.start();
+        recordingStartTime = Date.now();
+
+        // 显示录制界面
+        inputArea.style.display = 'none';
+        voiceRecorder.classList.add('active');
+
+        // 开始计时
+        let seconds = 0;
+        recordingTimer = setInterval(() => {
+            seconds++;
+            recordingTime.textContent = formatTime(seconds);
+
+            // 最长录制60秒
+            if (seconds >= 60) {
+                stopRecording();
+            }
+        }, 1000);
+
+    } catch (error) {
+        console.error('无法访问麦克风:', error);
+        alert('无法访问麦克风，请确保已授予麦克风权限');
+    }
+});
+
+// 取消录制
+cancelRecordingBtn.addEventListener('click', () => {
+    cancelRecording();
+});
+
+function cancelRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+
+    clearInterval(recordingTimer);
+    recordingTime.textContent = '00:00';
+
+    voiceRecorder.classList.remove('active');
+    inputArea.style.display = 'flex';
+
+    // 清理数据
+    audioChunks = [];
+    recordedAudioBlob = null;
+    if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+        recordedAudioUrl = null;
+    }
+}
+
+// 停止录制
+stopRecordingBtn.addEventListener('click', () => {
+    stopRecording();
+});
+
+function stopRecording() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+    }
+    clearInterval(recordingTimer);
+}
+
+// 显示预览界面
+function showVoicePreview() {
+    voiceRecorder.classList.remove('active');
+    voicePreview.classList.add('active');
+
+    // 创建音频对象用于预览
+    previewAudio = new Audio(recordedAudioUrl);
+}
+
+// 播放/暂停预览
+playPreviewBtn.addEventListener('click', () => {
+    if (!previewAudio) return;
+
+    if (previewAudio.paused) {
+        previewAudio.play();
+        playPreviewBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+        `;
+    } else {
+        previewAudio.pause();
+        playPreviewBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        `;
+    }
+
+    // 播放结束后恢复按钮
+    previewAudio.onended = () => {
+        playPreviewBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        `;
+    };
+});
+
+// 重新录制
+rerecordBtn.addEventListener('click', () => {
+    // 清理预览
+    if (previewAudio) {
+        previewAudio.pause();
+        previewAudio = null;
+    }
+
+    if (recordedAudioUrl) {
+        URL.revokeObjectURL(recordedAudioUrl);
+        recordedAudioUrl = null;
+    }
+
+    recordedAudioBlob = null;
+    voicePreview.classList.remove('active');
+    inputArea.style.display = 'flex';
+
+    // 重新开始录制
+    setTimeout(() => {
+        voiceBtn.click();
+    }, 100);
+});
+
+// 发送语音消息
+sendVoiceBtn.addEventListener('click', async () => {
+    if (!recordedAudioBlob) return;
+
+    try {
+        // 转换为base64
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64Audio = reader.result.split(',')[1];
+            const duration = parseInt(previewDuration.textContent.split(':')[0]) * 60 +
+                           parseInt(previewDuration.textContent.split(':')[1]);
+
+            // 发送语音消息
+            let message, chatKey;
+
+            if (currentChatType === 'group') {
+                // 群聊语音消息
+                message = {
+                    type: 'send_group_message',
+                    group_id: currentChatWith,
+                    content: base64Audio,
+                    content_type: 'voice',
+                    duration: duration,
+                    timestamp: Date.now()
+                };
+                chatKey = currentChatWith;
+
+                messages.get(chatKey).push({
+                    ...message,
+                    from: currentUser,
+                    group_id: currentChatWith,
+                    read_by: [currentUser],
+                    unread_members: groups.get(currentChatWith)?.members.filter(m => m !== currentUser) || []
+                });
+            } else {
+                // 私聊语音消息
+                message = {
+                    type: 'send_message',
+                    to: currentChatWith,
+                    content: base64Audio,
+                    content_type: 'voice',
+                    duration: duration,
+                    timestamp: Date.now()
+                };
+                chatKey = getChatKey(currentUser, currentChatWith);
+            }
+
+            // 发送到服务器
+            ws.send(JSON.stringify(message));
+
+            // 显示语音消息
+            displayMessage({...message, from: currentUser});
+
+            // 清理并恢复界面
+            if (previewAudio) {
+                previewAudio.pause();
+                previewAudio = null;
+            }
+
+            if (recordedAudioUrl) {
+                URL.revokeObjectURL(recordedAudioUrl);
+                recordedAudioUrl = null;
+            }
+
+            recordedAudioBlob = null;
+            voicePreview.classList.remove('active');
+            inputArea.style.display = 'flex';
+        };
+
+        reader.readAsDataURL(recordedAudioBlob);
+
+    } catch (error) {
+        console.error('发送语音消息失败:', error);
+        alert('发送语音消息失败');
+    }
+});
+
+// 播放语音消息
+let currentPlayingAudio = null;
+let currentPlayingBtn = null;
+
+function playVoiceMessage(base64Audio, playBtn, voiceInfo) {
+    // 如果当前有正在播放的语音，先停止
+    if (currentPlayingAudio && !currentPlayingAudio.paused) {
+        currentPlayingAudio.pause();
+        currentPlayingAudio.currentTime = 0;
+
+        // 恢复之前的播放按钮
+        if (currentPlayingBtn) {
+            currentPlayingBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <polygon points="8 5 19 12 8 19 8 5"></polygon>
+                </svg>
+            `;
+            // 移除动画
+            const prevAnimation = currentPlayingBtn.parentElement.querySelector('.voice-playing-animation');
+            if (prevAnimation) {
+                prevAnimation.remove();
+            }
+        }
+    }
+
+    // 如果点击的是同一个按钮，只是暂停
+    if (currentPlayingBtn === playBtn && currentPlayingAudio && !currentPlayingAudio.paused) {
+        currentPlayingAudio.pause();
+        playBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="8 5 19 12 8 19 8 5"></polygon>
+            </svg>
+        `;
+        return;
+    }
+
+    // 创建音频对象
+    const audioUrl = `data:audio/webm;base64,${base64Audio}`;
+    const audio = new Audio(audioUrl);
+
+    currentPlayingAudio = audio;
+    currentPlayingBtn = playBtn;
+
+    // 更改按钮为暂停图标
+    playBtn.innerHTML = `
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="4" width="4" height="16"></rect>
+            <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+    `;
+
+    // 添加播放动画
+    const durationText = voiceInfo.querySelector('.voice-duration-text');
+    const animationDiv = document.createElement('div');
+    animationDiv.className = 'voice-playing-animation';
+    animationDiv.innerHTML = `
+        <div class="voice-bar"></div>
+        <div class="voice-bar"></div>
+        <div class="voice-bar"></div>
+        <div class="voice-bar"></div>
+        <div class="voice-bar"></div>
+    `;
+    voiceInfo.insertBefore(animationDiv, durationText);
+
+    // 播放音频
+    audio.play().catch(error => {
+        console.error('播放语音失败:', error);
+        alert('播放语音失败');
+        playBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="8 5 19 12 8 19 8 5"></polygon>
+            </svg>
+        `;
+        animationDiv.remove();
+    });
+
+    // 播放结束
+    audio.onended = () => {
+        playBtn.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="8 5 19 12 8 19 8 5"></polygon>
+            </svg>
+        `;
+        animationDiv.remove();
+        currentPlayingAudio = null;
+        currentPlayingBtn = null;
+    };
+}

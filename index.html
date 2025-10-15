@@ -614,6 +614,226 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* 语音录制界面 */
+        .voice-recorder {
+            display: none;
+            padding: 20px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-top: 1px solid rgba(255,255,255,0.2);
+            align-items: center;
+            gap: 16px;
+        }
+
+        .voice-recorder.active {
+            display: flex;
+        }
+
+        .recording-indicator {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+            flex: 1;
+        }
+
+        .recording-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff4444;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+
+        .recording-time {
+            font-size: 18px;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .recording-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .recording-actions button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cancel-recording-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .cancel-recording-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .stop-recording-btn {
+            background: white;
+            color: #667eea;
+        }
+
+        .stop-recording-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        /* 语音预览界面 */
+        .voice-preview {
+            display: none;
+            padding: 20px 24px;
+            background: #f8f9fa;
+            border-top: 1px solid #e8eaed;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .voice-preview.active {
+            display: flex;
+        }
+
+        .voice-waveform {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .play-voice-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .play-voice-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        .voice-duration {
+            font-size: 14px;
+            color: #666;
+            font-family: 'Courier New', monospace;
+        }
+
+        .voice-preview-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .voice-preview-actions button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .rerecord-btn {
+            background: #f3f4f6;
+            color: #666;
+        }
+
+        .rerecord-btn:hover {
+            background: #e5e7eb;
+        }
+
+        .send-voice-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        }
+
+        .send-voice-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+
+        /* 语音消息气泡 */
+        .voice-message {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 200px;
+        }
+
+        .voice-play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.3);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .message.received .voice-play-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .voice-play-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .voice-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .voice-duration-text {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .voice-playing-animation {
+            display: flex;
+            gap: 2px;
+            align-items: center;
+            height: 20px;
+        }
+
+        .voice-bar {
+            width: 3px;
+            background: currentColor;
+            border-radius: 2px;
+            animation: voiceWave 1s ease-in-out infinite;
+        }
+
+        .voice-bar:nth-child(1) { height: 8px; animation-delay: 0s; }
+        .voice-bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+        .voice-bar:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+        .voice-bar:nth-child(4) { height: 16px; animation-delay: 0.3s; }
+        .voice-bar:nth-child(5) { height: 12px; animation-delay: 0.4s; }
+
+        @keyframes voiceWave {
+            0%, 100% { transform: scaleY(0.5); }
+            50% { transform: scaleY(1); }
+        }
+
         /* 响应式设计 */
         @media (max-width: 768px) {
             .sidebar {
@@ -699,6 +919,14 @@
                             <polyline points="21 15 16 10 5 21"></polyline>
                         </svg>
                     </button>
+                    <button class="image-btn" id="voice-btn" title="语音消息">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                            <line x1="12" y1="19" x2="12" y2="23"></line>
+                            <line x1="8" y1="23" x2="16" y2="23"></line>
+                        </svg>
+                    </button>
                     <input type="text" id="message-input" placeholder="输入消息...">
                     <button class="send-btn" id="send-btn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -706,6 +934,33 @@
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
                     </button>
+                </div>
+                <!-- 语音录制界面 -->
+                <div class="voice-recorder" id="voice-recorder">
+                    <div class="recording-indicator">
+                        <div class="recording-dot"></div>
+                        <div class="recording-time" id="recording-time">00:00</div>
+                        <span style="color: white; font-size: 14px;">正在录制...</span>
+                    </div>
+                    <div class="recording-actions">
+                        <button class="cancel-recording-btn" id="cancel-recording-btn">❌ 取消</button>
+                        <button class="stop-recording-btn" id="stop-recording-btn">⏹ 完成录制</button>
+                    </div>
+                </div>
+                <!-- 语音预览界面 -->
+                <div class="voice-preview" id="voice-preview">
+                    <div class="voice-waveform">
+                        <button class="play-voice-btn" id="play-preview-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+                        <div class="voice-duration" id="preview-duration">00:00</div>
+                    </div>
+                    <div class="voice-preview-actions">
+                        <button class="rerecord-btn" id="rerecord-btn">🔄 重新录制</button>
+                        <button class="send-voice-btn" id="send-voice-btn">📤 发送</button>
+                    </div>
                 </div>
                 <!-- 机器人输入区域 (仅对怡总显示) -->
                 <div id="bot-input-area" style="display: none; padding: 16px; background: #f9f9f9; border-top: 2px solid #e0e0e0;">
