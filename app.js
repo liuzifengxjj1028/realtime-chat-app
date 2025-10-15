@@ -534,7 +534,9 @@ function sendImage(file) {
 
 // 接收历史消息（登录时加载）
 function receiveHistoryMessage(data) {
-    const chatKey = getChatKey(currentUser, data.from) || getChatKey(currentUser, data.to);
+    // 确定聊天对象：如果消息是自己发的，对方是 to；如果是对方发的，对方是 from
+    const chatPartner = data.from === currentUser ? data.to : data.from;
+    const chatKey = getChatKey(currentUser, chatPartner);
 
     if (!messages.has(chatKey)) {
         messages.set(chatKey, []);
