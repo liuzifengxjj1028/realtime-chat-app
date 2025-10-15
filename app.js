@@ -2171,7 +2171,8 @@ sendVoiceBtn.addEventListener('click', async () => {
                     content: base64Audio,
                     content_type: 'voice',
                     duration: duration,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    from: currentUser  // 添加from字段
                 };
                 chatKey = currentChatWith;
 
@@ -2195,7 +2196,8 @@ sendVoiceBtn.addEventListener('click', async () => {
                     content: base64Audio,
                     content_type: 'voice',
                     duration: duration,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    from: currentUser  // 添加from字段
                 };
                 chatKey = getChatKey(currentUser, currentChatWith);
             }
