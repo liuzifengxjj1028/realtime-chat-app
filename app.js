@@ -664,6 +664,10 @@ function scrollToQuotedMessage(timestamp) {
 
 // 显示阅读详情弹窗
 function showReadDetail(msg) {
+    console.log('📊 显示阅读详情 - timestamp:', msg.timestamp);
+    console.log('📊 read_by:', msg.read_by);
+    console.log('📊 unread_members:', msg.unread_members);
+
     currentReadDetailMessage = msg; // 保存当前显示的消息
     readList.innerHTML = '';
     unreadList.innerHTML = '';
@@ -1013,7 +1017,10 @@ function handleGroupMessageReadUpdate(data) {
 
             // 如果阅读详情模态框正在显示这条消息，刷新模态框
             if (currentReadDetailMessage && currentReadDetailMessage.timestamp === data.timestamp) {
+                console.log('🔄 刷新阅读详情模态框');
                 showReadDetail(msg); // 重新渲染模态框
+            } else if (currentReadDetailMessage) {
+                console.log('❌ 时间戳不匹配', currentReadDetailMessage.timestamp, '!=', data.timestamp);
             }
 
             break;
