@@ -488,7 +488,19 @@ function displayMessage(msg) {
 
             readStatusDiv.onclick = (e) => {
                 e.stopPropagation();
-                showReadDetail(msg);
+                // 通过timestamp从messages中查找最新的消息对象
+                const chatKey = currentChatWith;
+                const chatMessages = messages.get(chatKey);
+                if (chatMessages) {
+                    const latestMsg = chatMessages.find(m => m.timestamp === msg.timestamp);
+                    if (latestMsg) {
+                        showReadDetail(latestMsg);
+                    } else {
+                        showReadDetail(msg); // 降级处理
+                    }
+                } else {
+                    showReadDetail(msg); // 降级处理
+                }
             };
 
             timeDiv.appendChild(readStatusDiv);
