@@ -13,10 +13,20 @@ from aiohttp import web
 import aiohttp_cors
 import aiohttp
 
+# 数据存储文件路径
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+MESSAGES_FILE = os.path.join(DATA_DIR, 'messages.json')
+GROUPS_FILE = os.path.join(DATA_DIR, 'groups.json')
+OFFLINE_MESSAGES_FILE = os.path.join(DATA_DIR, 'offline_messages.json')
+BOT_CONFIGS_FILE = os.path.join(DATA_DIR, 'bot_configs.json')
+
+# 确保数据目录存在
+os.makedirs(DATA_DIR, exist_ok=True)
+
 # 存储连接的用户
 connected_users = {}  # {username: websocket}
 user_ids = {}  # {username: userId} - 跟踪用户ID
-# 存储消息（简单的内存存储）
+# 存储消息（持久化存储）
 messages_store = {}  # {chat_key: [messages]}
 # 存储群组
 groups_store = {}  # {group_id: {name, members, creator}}
@@ -27,6 +37,90 @@ offline_messages = {}  # {username: [messages]}
 BOT_USERNAME = '怡总'  # 聊天记录总结机器人
 # 存储用户的机器人配置
 bot_configs = {}  # {username: {prompt: str}}
+
+# 加载持久化数据
+def load_data():
+    """从文件加载数据"""
+    global messages_store, groups_store, offline_messages, bot_configs, group_counter
+
+    # 加载消息
+    if os.path.exists(MESSAGES_FILE):
+        try:
+            with open(MESSAGES_FILE, 'r', encoding='utf-8') as f:
+                messages_store = json.load(f)
+            print(f'✅ 加载了 {len(messages_store)} 个聊天会话的历史消息')
+        except Exception as e:
+            print(f'⚠️  加载消息失败: {e}')
+            messages_store = {}
+
+    # 加载群组
+    if os.path.exists(GROUPS_FILE):
+        try:
+            with open(GROUPS_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                groups_store = data.get('groups', {})
+                group_counter = data.get('counter', 0)
+            print(f'✅ 加载了 {len(groups_store)} 个群组')
+        except Exception as e:
+            print(f'⚠️  加载群组失败: {e}')
+            groups_store = {}
+            group_counter = 0
+
+    # 加载离线消息
+    if os.path.exists(OFFLINE_MESSAGES_FILE):
+        try:
+            with open(OFFLINE_MESSAGES_FILE, 'r', encoding='utf-8') as f:
+                offline_messages = json.load(f)
+            print(f'✅ 加载了 {sum(len(msgs) for msgs in offline_messages.values())} 条离线消息')
+        except Exception as e:
+            print(f'⚠️  加载离线消息失败: {e}')
+            offline_messages = {}
+
+    # 加载机器人配置
+    if os.path.exists(BOT_CONFIGS_FILE):
+        try:
+            with open(BOT_CONFIGS_FILE, 'r', encoding='utf-8') as f:
+                bot_configs = json.load(f)
+            print(f'✅ 加载了 {len(bot_configs)} 个机器人配置')
+        except Exception as e:
+            print(f'⚠️  加载机器人配置失败: {e}')
+            bot_configs = {}
+
+# 保存数据到文件
+def save_messages():
+    """保存消息到文件"""
+    try:
+        with open(MESSAGES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(messages_store, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'❌ 保存消息失败: {e}')
+
+def save_groups():
+    """保存群组到文件"""
+    try:
+        with open(GROUPS_FILE, 'w', encoding='utf-8') as f:
+            json.dump({
+                'groups': groups_store,
+                'counter': group_counter
+            }, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'❌ 保存群组失败: {e}')
+
+def save_offline_messages():
+    """保存离线消息到文件"""
+    try:
+        with open(OFFLINE_MESSAGES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(offline_messages, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'❌ 保存离线消息失败: {e}')
+
+def save_bot_configs():
+    """保存机器人配置到文件"""
+    try:
+        with open(BOT_CONFIGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(bot_configs, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f'❌ 保存机器人配置失败: {e}')
 
 
 def get_chat_key(user1, user2):
@@ -316,6 +410,7 @@ async def handle_send_message(data, from_user):
         message['quoted_message'] = quoted_message
 
     messages_store[chat_key].append(message)
+    save_messages()  # 保存消息
 
     # 如果是发送给机器人的消息，处理并回复
     if to_user == BOT_USERNAME:
@@ -335,6 +430,7 @@ async def handle_send_message(data, from_user):
         }
 
         messages_store[chat_key].append(bot_message)
+        save_messages()  # 保存消息
 
         if from_user in connected_users:
             await connected_users[from_user].send_json({
@@ -494,6 +590,7 @@ async def handle_create_group(ws, data, creator):
         'members': all_members,
         'creator': creator
     }
+    save_groups()  # 保存群组
 
     # 通知所有成员（包括创建者）
     for member in all_members:
@@ -554,6 +651,7 @@ async def handle_send_group_message(data, from_user):
         message['quoted_message'] = quoted_message
 
     messages_store[group_id].append(message)
+    save_messages()  # 保存消息
 
     # 广播消息给所有群成员（除了发送者）
     for member in group['members']:
@@ -659,6 +757,11 @@ if __name__ == '__main__':
     print(f'🔑 API密钥状态: {"✅ 已配置" if api_key else "❌ 未配置"}')
     if api_key:
         print(f'🔑 API密钥长度: {len(api_key)} 字符')
+    print('=' * 60)
+
+    # 加载持久化数据
+    print('📂 加载历史数据...')
+    load_data()
     print('=' * 60)
 
     app = create_app()

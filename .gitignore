@@ -26,3 +26,6 @@ uploads/*
 # Logs
 *.log
 .api_config
+
+# Data files (persistent storage)
+data/
