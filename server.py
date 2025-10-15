@@ -90,6 +90,9 @@ async def handle_message(ws, data, current_username):
     elif msg_type == 'send_group_message':
         await handle_send_group_message(data, current_username)
 
+    elif msg_type == 'mark_group_message_read':
+        await handle_mark_group_message_read(data, current_username)
+
 
 async def handle_register(ws, data):
     """处理用户注册"""
@@ -356,13 +359,19 @@ async def handle_send_group_message(data, from_user):
     if group_id not in messages_store:
         messages_store[group_id] = []
 
+    # 初始化已读列表：发送者自动标记为已读
+    read_by = [from_user]
+    unread_members = [m for m in group['members'] if m != from_user]
+
     message = {
         'from': from_user,
         'group_id': group_id,
         'content': content,
         'content_type': content_type,
         'timestamp': timestamp,
-        'read': False
+        'read': False,
+        'read_by': read_by,  # 已读成员列表
+        'unread_members': unread_members  # 未读成员列表
     }
 
     # 如果有引用消息，添加到消息中
@@ -380,6 +389,44 @@ async def handle_send_group_message(data, from_user):
             })
 
     print(f'群组消息: {from_user} -> {group["name"]} ({content_type})')
+
+
+async def handle_mark_group_message_read(data, current_user):
+    """处理群消息已读标记"""
+    group_id = data.get('group_id')
+    timestamp = data.get('timestamp')
+
+    if not group_id or not timestamp or not current_user:
+        return
+
+    # 检查群组是否存在
+    if group_id not in groups_store or group_id not in messages_store:
+        return
+
+    # 查找消息并更新已读状态
+    for msg in messages_store[group_id]:
+        if msg.get('timestamp') == timestamp:
+            # 将当前用户从未读列表移除，添加到已读列表
+            if current_user in msg.get('unread_members', []):
+                msg['unread_members'].remove(current_user)
+            if current_user not in msg.get('read_by', []):
+                msg['read_by'].append(current_user)
+
+            # 广播更新后的阅读状态给群内所有在线成员
+            group = groups_store[group_id]
+            for member in group['members']:
+                if member in connected_users:
+                    await connected_users[member].send_json({
+                        'type': 'group_message_read_update',
+                        'group_id': group_id,
+                        'timestamp': timestamp,
+                        'read_by': msg['read_by'],
+                        'unread_members': msg['unread_members'],
+                        'reader': current_user
+                    })
+
+            print(f'群消息已读: {current_user} 已读群 {group_id} 的消息 {timestamp}')
+            break
 
 
 async def index_handler(request):

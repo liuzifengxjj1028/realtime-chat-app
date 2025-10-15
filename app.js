@@ -52,6 +52,12 @@ const quotePreview = document.getElementById('quote-preview');
 const quoteUser = document.getElementById('quote-user');
 const quoteContent = document.getElementById('quote-content');
 const cancelQuoteBtn = document.getElementById('cancel-quote');
+const readDetailModal = document.getElementById('read-detail-modal');
+const closeReadDetailBtn = document.getElementById('close-read-detail-btn');
+const readList = document.getElementById('read-list');
+const unreadList = document.getElementById('unread-list');
+const readCount = document.getElementById('read-count');
+const unreadCount = document.getElementById('unread-count');
 
 // 连接 WebSocket
 function connectWebSocket() {
@@ -118,6 +124,9 @@ function handleMessage(data) {
             break;
         case 'new_group_message':
             receiveGroupMessage(data);
+            break;
+        case 'group_message_read_update':
+            handleGroupMessageReadUpdate(data);
             break;
     }
 }
@@ -448,6 +457,29 @@ function displayMessage(msg) {
         recallBtn.style.cssText = 'font-size: 11px; padding: 3px 8px; margin-left: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 4px; color: #fff; cursor: pointer; font-weight: 500;';
         recallBtn.onclick = () => recallMessage(msg.timestamp);
         timeDiv.appendChild(recallBtn);
+
+        // 如果是群聊消息，显示阅读状态
+        if (currentChatType === 'group' && msg.read_by && msg.unread_members) {
+            const readStatusDiv = document.createElement('span');
+            readStatusDiv.className = 'read-status';
+            readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 11px; color: rgba(255,255,255,0.6); cursor: pointer;';
+
+            const readByCount = msg.read_by.length;
+            const unreadCount = msg.unread_members.length;
+
+            if (unreadCount === 0) {
+                readStatusDiv.innerHTML = '✓ 全部已读';
+            } else {
+                readStatusDiv.innerHTML = `${unreadCount}人未读，${readByCount}人已读`;
+            }
+
+            readStatusDiv.onclick = (e) => {
+                e.stopPropagation();
+                showReadDetail(msg);
+            };
+
+            timeDiv.appendChild(readStatusDiv);
+        }
     }
 
     // 添加长按/双击引用功能
@@ -617,6 +649,59 @@ function scrollToQuotedMessage(timestamp) {
     }, 1000);
 }
 
+// 显示阅读详情弹窗
+function showReadDetail(msg) {
+    readList.innerHTML = '';
+    unreadList.innerHTML = '';
+
+    // 显示已读成员
+    const readBy = msg.read_by || [];
+    readCount.textContent = readBy.length;
+    readBy.forEach(member => {
+        const memberDiv = document.createElement('div');
+        memberDiv.style.cssText = 'padding: 8px; border-bottom: 1px solid #eee; display: flex; align-items: center;';
+        memberDiv.innerHTML = `
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #6c5ce7; color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 14px;">
+                ${member.substring(0, 1)}
+            </div>
+            <div style="font-size: 14px; color: #333;">${member}</div>
+            <div style="margin-left: auto; color: #07c160; font-size: 18px;">✓</div>
+        `;
+        readList.appendChild(memberDiv);
+    });
+
+    // 显示未读成员
+    const unreadMembers = msg.unread_members || [];
+    unreadCount.textContent = unreadMembers.length;
+    unreadMembers.forEach(member => {
+        const memberDiv = document.createElement('div');
+        memberDiv.style.cssText = 'padding: 8px; border-bottom: 1px solid #eee; display: flex; align-items: center;';
+        memberDiv.innerHTML = `
+            <div style="width: 32px; height: 32px; border-radius: 50%; background: #ccc; color: white; display: flex; align-items: center; justify-content: center; margin-right: 12px; font-size: 14px;">
+                ${member.substring(0, 1)}
+            </div>
+            <div style="font-size: 14px; color: #999;">${member}</div>
+        `;
+        unreadList.appendChild(memberDiv);
+    });
+
+    readDetailModal.style.display = 'flex';
+}
+
+// 关闭阅读详情弹窗
+function closeReadDetail() {
+    readDetailModal.style.display = 'none';
+}
+
+// 发送群消息已读回执
+function sendGroupMessageReadReceipt(groupId, timestamp) {
+    ws.send(JSON.stringify({
+        type: 'mark_group_message_read',
+        group_id: groupId,
+        timestamp: timestamp
+    }));
+}
+
 // 事件监听
 loginBtn.addEventListener('click', () => {
     const nickname = nicknameInput.value.trim();
@@ -693,6 +778,14 @@ imageInput.addEventListener('change', (e) => {
 // 登出/切换用户
 // 取消引用按钮
 cancelQuoteBtn.addEventListener('click', cancelQuote);
+
+// 关闭阅读详情弹窗
+closeReadDetailBtn.addEventListener('click', closeReadDetail);
+readDetailModal.addEventListener('click', (e) => {
+    if (e.target === readDetailModal) {
+        closeReadDetail();
+    }
+});
 
 logoutBtn.addEventListener('click', () => {
     if (confirm('确定要切换用户吗？')) {
@@ -863,9 +956,47 @@ function receiveGroupMessage(data) {
     }
     messages.get(chatKey).push(data);
 
-    // 如果正在查看这个群聊，显示消息
+    // 如果正在查看这个群聊，显示消息并发送已读回执
     if (currentChatWith === data.group_id && currentChatType === 'group') {
         displayMessage(data);
+        // 发送已读回执
+        sendGroupMessageReadReceipt(data.group_id, data.timestamp);
+    }
+}
+
+// 处理群消息阅读状态更新
+function handleGroupMessageReadUpdate(data) {
+    const chatKey = data.group_id;
+    const chatMessages = messages.get(chatKey);
+
+    if (!chatMessages) return;
+
+    // 查找并更新消息的阅读状态
+    for (let msg of chatMessages) {
+        if (msg.timestamp === data.timestamp) {
+            msg.read_by = data.read_by;
+            msg.unread_members = data.unread_members;
+
+            // 如果正在查看这个群聊，更新UI显示
+            if (currentChatWith === data.group_id && currentChatType === 'group') {
+                // 重新渲染消息列表以更新阅读状态
+                const messageEl = messagesContainer.querySelector(`[data-timestamp="${data.timestamp}"]`);
+                if (messageEl) {
+                    const readStatusEl = messageEl.querySelector('.read-status');
+                    if (readStatusEl) {
+                        const readByCount = data.read_by.length;
+                        const unreadCount = data.unread_members.length;
+
+                        if (unreadCount === 0) {
+                            readStatusEl.innerHTML = '✓ 全部已读';
+                        } else {
+                            readStatusEl.innerHTML = `${unreadCount}人未读，${readByCount}人已读`;
+                        }
+                    }
+                }
+            }
+            break;
+        }
     }
 }
 

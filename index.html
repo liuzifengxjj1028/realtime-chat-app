@@ -556,6 +556,26 @@
         </div>
     </div>
 
+    <!-- 阅读详情弹窗 -->
+    <div class="modal" id="read-detail-modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>阅读状态</h3>
+                <button class="close-btn" id="close-read-detail-btn">&times;</button>
+            </div>
+            <div style="margin-top: 16px;">
+                <div style="font-size: 14px; font-weight: 500; color: #333; margin-bottom: 8px;">已读 (<span id="read-count">0</span>)</div>
+                <div id="read-list" style="max-height: 150px; overflow-y: auto; margin-bottom: 16px;">
+                    <!-- 已读成员列表 -->
+                </div>
+                <div style="font-size: 14px; font-weight: 500; color: #333; margin-bottom: 8px;">未读 (<span id="unread-count">0</span>)</div>
+                <div id="unread-list" style="max-height: 150px; overflow-y: auto;">
+                    <!-- 未读成员列表 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
