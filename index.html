@@ -753,11 +753,25 @@
     <!-- AI聊天总结对话框 -->
     <div class="modal" id="ai-summary-modal" style="display: none;">
         <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h3>🤖 AI聊天总结</h3>
-                <button class="close-btn" id="close-ai-summary-btn">&times;</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="config-summary-prompt-btn" style="padding: 6px 12px; background: #6c5ce7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">⚙️ 配置Prompt</button>
+                    <button class="close-btn" id="close-ai-summary-btn">&times;</button>
+                </div>
             </div>
             <div style="margin-top: 16px;">
+                <!-- Prompt配置区域（默认隐藏） -->
+                <div id="summary-prompt-config" style="display: none; margin-bottom: 20px; padding: 12px; background: #f9f9ff; border: 2px solid #6c5ce7; border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px;">
+                        总结Prompt：
+                    </label>
+                    <textarea id="summary-prompt-input" placeholder="请输入你希望AI如何总结聊天记录的提示词..." style="width: 100%; height: 150px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px; font-family: 'Courier New', monospace; resize: vertical; line-height: 1.5;"></textarea>
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        💡 提示：留空则使用默认的多维度分析提示词
+                    </div>
+                </div>
+
                 <!-- 用户选择 -->
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">

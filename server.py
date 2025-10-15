@@ -786,8 +786,9 @@ def create_app():
             start_date = data.get('start_date', '')
             end_date = data.get('end_date', '')
             chat_content = data.get('chat_content', '')
+            custom_prompt = data.get('custom_prompt', '')
 
-            print(f'📊 收到AI总结请求: 用户={users}, 消息数量={len(chat_content.split(chr(10)))}条')
+            print(f'📊 收到AI总结请求: 用户={users}, 消息数量={len(chat_content.split(chr(10)))}条, 自定义Prompt={bool(custom_prompt)}')
 
             # 调用Claude API进行总结
             api_key = os.environ.get('ANTHROPIC_API_KEY', '')
@@ -797,7 +798,18 @@ def create_app():
                 }, status=500)
 
             # 构建总结prompt
-            prompt = f"""请对以下聊天记录进行详细总结分析：
+            if custom_prompt:
+                # 使用用户自定义的prompt
+                prompt = f"""{custom_prompt}
+
+用户：{', '.join(users)}
+时间段：{start_date} 至 {end_date}
+
+聊天记录：
+{chat_content}"""
+            else:
+                # 使用默认prompt
+                prompt = f"""请对以下聊天记录进行详细总结分析：
 
 用户：{', '.join(users)}
 时间段：{start_date} 至 {end_date}

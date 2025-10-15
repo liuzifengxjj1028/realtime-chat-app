@@ -100,6 +100,9 @@ const summaryTimeInfo = document.getElementById('summary-time-info');
 const summaryCountInfo = document.getElementById('summary-count-info');
 const summaryLoading = document.getElementById('summary-loading');
 const summaryResultContent = document.getElementById('summary-result-content');
+const configSummaryPromptBtn = document.getElementById('config-summary-prompt-btn');
+const summaryPromptConfig = document.getElementById('summary-prompt-config');
+const summaryPromptInput = document.getElementById('summary-prompt-input');
 
 console.log('botSubmitBtn元素:', botSubmitBtn);
 
@@ -1672,9 +1675,21 @@ aiSummaryBtn.addEventListener('click', () => {
     // 生成用户选择列表
     userSelectContainer.innerHTML = '';
 
-    // 添加所有联系人（排除机器人和当前用户）
+    // 先添加当前用户自己
+    const selfCheckbox = document.createElement('label');
+    selfCheckbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s; background: #f0f7ff;';
+    selfCheckbox.innerHTML = `
+        <input type="checkbox" value="${currentUser}" style="margin-right: 8px;">
+        <span style="font-size: 14px; color: #333; font-weight: 600;">${currentUser}</span>
+        <span style="font-size: 12px; color: #07c160; margin-left: 8px;">我自己</span>
+    `;
+    selfCheckbox.onmouseover = () => selfCheckbox.style.background = '#e6f3ff';
+    selfCheckbox.onmouseout = () => selfCheckbox.style.background = '#f0f7ff';
+    userSelectContainer.appendChild(selfCheckbox);
+
+    // 添加所有联系人（排除机器人）
     contacts.forEach((contactInfo, username) => {
-        if (username !== currentUser && !contactInfo.isBot) {
+        if (!contactInfo.isBot) {
             const checkbox = document.createElement('label');
             checkbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s;';
             checkbox.innerHTML = `
@@ -1697,13 +1712,28 @@ aiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'flex';
 });
 
+// 切换Prompt配置区域
+configSummaryPromptBtn.addEventListener('click', () => {
+    if (summaryPromptConfig.style.display === 'none') {
+        summaryPromptConfig.style.display = 'block';
+        configSummaryPromptBtn.textContent = '⚙️ 隐藏Prompt';
+    } else {
+        summaryPromptConfig.style.display = 'none';
+        configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
+    }
+});
+
 // 关闭对话框
 closeAiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'none';
+    summaryPromptConfig.style.display = 'none';
+    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
 });
 
 cancelAiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'none';
+    summaryPromptConfig.style.display = 'none';
+    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
 });
 
 // 提交AI总结请求
@@ -1756,13 +1786,18 @@ submitAiSummaryBtn.addEventListener('click', async () => {
     // 按时间排序
     filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
 
+    // 获取自定义prompt（如果有）
+    const customPrompt = summaryPromptInput.value.trim();
+
     // 关闭对话框，打开抽屉
     aiSummaryModal.style.display = 'none';
-    showSummaryDrawer(selectedUsers, startDate, endDate, filteredMessages);
+    summaryPromptConfig.style.display = 'none';
+    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
+    showSummaryDrawer(selectedUsers, startDate, endDate, filteredMessages, customPrompt);
 });
 
 // 显示总结抽屉并调用AI
-async function showSummaryDrawer(users, startDate, endDate, messages) {
+async function showSummaryDrawer(users, startDate, endDate, messages, customPrompt = '') {
     // 显示抽屉和遮罩
     drawerOverlay.style.display = 'block';
     aiSummaryDrawer.style.display = 'block';
@@ -1797,7 +1832,8 @@ async function showSummaryDrawer(users, startDate, endDate, messages) {
                 users: users,
                 start_date: startDate.toISOString(),
                 end_date: endDate.toISOString(),
-                chat_content: chatContent
+                chat_content: chatContent,
+                custom_prompt: customPrompt
             })
         });
 
