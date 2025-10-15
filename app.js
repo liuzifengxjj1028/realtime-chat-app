@@ -707,8 +707,8 @@ function displayMessage(msg) {
     messageDiv.className = `message ${msg.from === currentUser ? 'sent' : 'received'}`;
     messageDiv.dataset.timestamp = msg.timestamp;
 
-    // 如果不是自己发的消息，显示发送者名字
-    if (msg.from !== currentUser) {
+    // 如果不是自己发的消息且不是撤回通知，显示发送者名字
+    if (msg.from !== currentUser && msg.content_type !== 'recall_notice') {
         const senderName = document.createElement('div');
         senderName.className = 'message-sender';
         senderName.textContent = msg.from;
@@ -2040,7 +2040,7 @@ let recordedAudioUrl = null;
 let previewAudio = null;
 
 // 格式化时间显示 (秒数转 mm:ss)
-function formatTime(seconds) {
+function formatDuration(seconds) {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -2079,7 +2079,7 @@ voiceBtn.addEventListener('click', async () => {
 
             // 计算录制时长
             const duration = Math.floor((Date.now() - recordingStartTime) / 1000);
-            previewDuration.textContent = formatTime(duration);
+            previewDuration.textContent = formatDuration(duration);
 
             // 显示预览界面
             showVoicePreview();
@@ -2097,7 +2097,7 @@ voiceBtn.addEventListener('click', async () => {
         let seconds = 0;
         recordingTimer = setInterval(() => {
             seconds++;
-            recordingTime.textContent = formatTime(seconds);
+            recordingTime.textContent = formatDuration(seconds);
 
             // 最长录制60秒
             if (seconds >= 60) {
