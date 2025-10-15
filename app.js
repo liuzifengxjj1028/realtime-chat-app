@@ -406,11 +406,11 @@ function displayMessage(msg) {
         if (isSentMessage) {
             // 自己发送的消息（蓝色气泡）
             quotedDiv.style.cssText = 'background: rgba(0,0,0,0.15); border-left: 2px solid rgba(255,255,255,0.5); padding: 4px 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size: 12px; line-height: 1.4;';
-            quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.7); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${msg.quoted_message.from}: ${msg.quoted_message.content || '[图片]'}</div>`;
+            quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.95); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${msg.quoted_message.from}: ${msg.quoted_message.content || '[图片]'}</div>`;
         } else {
             // 接收的消息（灰色气泡）
             quotedDiv.style.cssText = 'background: rgba(0,0,0,0.06); border-left: 2px solid #b0b0b0; padding: 4px 8px; margin-bottom: 6px; border-radius: 2px; cursor: pointer; font-size: 12px; line-height: 1.4;';
-            quotedDiv.innerHTML = `<div style="color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${msg.quoted_message.from}: ${msg.quoted_message.content || '[图片]'}</div>`;
+            quotedDiv.innerHTML = `<div style="color: #555; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${msg.quoted_message.from}: ${msg.quoted_message.content || '[图片]'}</div>`;
         }
 
         // 点击引用跳转到原消息
