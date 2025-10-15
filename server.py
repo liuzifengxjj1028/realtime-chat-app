@@ -169,26 +169,26 @@ async def handle_register(ws, data):
 
 
 async def call_llm_api(prompt, user_content):
-    """调用LLM API进行总结"""
-    # 使用OpenAI兼容的API（可以是任何兼容的服务，如OpenAI、Anthropic Claude等）
-    api_key = os.environ.get('OPENAI_API_KEY', '')
-    api_base = os.environ.get('OPENAI_API_BASE', 'https://api.openai.com/v1')
+    """调用LLM API进行总结 - 支持Claude API"""
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
 
     if not api_key:
-        return "错误：未配置API密钥。请设置OPENAI_API_KEY环境变量。"
+        return "错误：未配置API密钥。请设置ANTHROPIC_API_KEY环境变量。"
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f'{api_base}/chat/completions',
+                'https://api.anthropic.com/v1/messages',
                 headers={
-                    'Authorization': f'Bearer {api_key}',
+                    'x-api-key': api_key,
+                    'anthropic-version': '2023-06-01',
                     'Content-Type': 'application/json'
                 },
                 json={
-                    'model': os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo'),
+                    'model': os.environ.get('ANTHROPIC_MODEL', 'claude-3-5-sonnet-20241022'),
+                    'max_tokens': 4096,
+                    'system': prompt,
                     'messages': [
-                        {'role': 'system', 'content': prompt},
                         {'role': 'user', 'content': user_content}
                     ],
                     'temperature': 0.7
@@ -197,7 +197,7 @@ async def call_llm_api(prompt, user_content):
             ) as response:
                 if response.status == 200:
                     result = await response.json()
-                    return result['choices'][0]['message']['content']
+                    return result['content'][0]['text']
                 else:
                     error_text = await response.text()
                     return f"API调用失败 ({response.status}): {error_text}"
@@ -231,6 +231,7 @@ async def handle_bot_message(from_user, content, content_type):
         return """📖 怡总使用说明：
 
 1. **设置总结Prompt**：
+   点击右上角"⚙️ 设置Prompt"按钮，或发送命令：
    /setprompt <你的prompt>
 
 2. **查看当前Prompt**：
@@ -239,11 +240,15 @@ async def handle_bot_message(from_user, content, content_type):
 3. **总结聊天记录**：
    直接粘贴聊天记录文本发送给我
 
-4. **上传PDF文件**：
-   发送PDF文件，我会提取内容并总结
+💡 **提示**：使用UI界面设置Prompt更方便！
 
-示例：
-/setprompt 请用3个要点总结会议内容，突出行动项
+🤖 **技术信息**：
+- API: Anthropic Claude 3.5 Sonnet
+- 环境变量: ANTHROPIC_API_KEY
+
+示例聊天记录：
+张三: 我们需要在下周五前完成项目
+李四: 好的，我负责前端部分
 """
 
     # 处理文本内容（聊天记录）
