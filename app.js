@@ -384,8 +384,8 @@ function displayMessage(msg) {
     messageDiv.className = `message ${msg.from === currentUser ? 'sent' : 'received'}`;
     messageDiv.dataset.timestamp = msg.timestamp;
 
-    // 如果是群聊消息且不是自己发的，显示发送者名字
-    if (currentChatType === 'group' && msg.from !== currentUser) {
+    // 如果不是自己发的消息，显示发送者名字
+    if (msg.from !== currentUser) {
         const senderName = document.createElement('div');
         senderName.className = 'message-sender';
         senderName.textContent = msg.from;
