@@ -395,33 +395,6 @@ function displayMessage(msg) {
         messageDiv.appendChild(senderName);
     }
 
-    // 如果消息包含引用，显示引用内容
-    if (msg.quoted_message) {
-        const quotedDiv = document.createElement('div');
-        const isSentMessage = msg.from === currentUser;
-
-        if (isSentMessage) {
-            // 自己发送的消息（蓝色气泡）- 使用白色文字
-            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.15); border-left: 3px solid rgba(255,255,255,0.6); padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;';
-            quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.9); font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: rgba(255,255,255,0.8);">"${msg.quoted_message.content || '[图片]'}"</div>`;
-            quotedDiv.onmouseover = () => quotedDiv.style.background = 'rgba(0,0,0,0.25)';
-            quotedDiv.onmouseout = () => quotedDiv.style.background = 'rgba(0,0,0,0.15)';
-        } else {
-            // 接收的消息（灰色气泡）- 使用深色文字
-            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.08); border-left: 3px solid #6c5ce7; padding: 6px 10px; margin-bottom: 6px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;';
-            quotedDiv.innerHTML = `<div style="color: #333; font-weight: 500; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: #555;">"${msg.quoted_message.content || '[图片]'}"</div>`;
-            quotedDiv.onmouseover = () => quotedDiv.style.background = 'rgba(0,0,0,0.15)';
-            quotedDiv.onmouseout = () => quotedDiv.style.background = 'rgba(0,0,0,0.08)';
-        }
-
-        // 点击引用跳转到原消息
-        quotedDiv.onclick = () => {
-            scrollToQuotedMessage(msg.quoted_message.timestamp);
-        };
-
-        messageDiv.appendChild(quotedDiv);
-    }
-
     const contentDiv = document.createElement('div');
     contentDiv.className = `message-content ${msg.read ? 'read' : ''}`;
 
@@ -434,6 +407,33 @@ function displayMessage(msg) {
     }
 
     messageDiv.appendChild(contentDiv);
+
+    // 如果消息包含引用，显示引用内容（在回复内容下方，灰色字体）
+    if (msg.quoted_message) {
+        const quotedDiv = document.createElement('div');
+        const isSentMessage = msg.from === currentUser;
+
+        if (isSentMessage) {
+            // 自己发送的消息（蓝色气泡）- 使用灰色半透明文字
+            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.1); border-left: 3px solid rgba(255,255,255,0.4); padding: 6px 10px; margin-top: 6px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: background 0.2s;';
+            quotedDiv.innerHTML = `<div style="color: rgba(255,255,255,0.6); font-weight: 400; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: rgba(255,255,255,0.5);">"${msg.quoted_message.content || '[图片]'}"</div>`;
+            quotedDiv.onmouseover = () => quotedDiv.style.background = 'rgba(0,0,0,0.2)';
+            quotedDiv.onmouseout = () => quotedDiv.style.background = 'rgba(0,0,0,0.1)';
+        } else {
+            // 接收的消息（灰色气泡）- 使用更深的灰色文字
+            quotedDiv.style.cssText = 'background: rgba(0,0,0,0.05); border-left: 3px solid #999; padding: 6px 10px; margin-top: 6px; border-radius: 4px; font-size: 11px; cursor: pointer; transition: background 0.2s;';
+            quotedDiv.innerHTML = `<div style="color: #888; font-weight: 400; margin-bottom: 2px;">${msg.quoted_message.from}</div><div style="color: #999;">"${msg.quoted_message.content || '[图片]'}"</div>`;
+            quotedDiv.onmouseover = () => quotedDiv.style.background = 'rgba(0,0,0,0.1)';
+            quotedDiv.onmouseout = () => quotedDiv.style.background = 'rgba(0,0,0,0.05)';
+        }
+
+        // 点击引用跳转到原消息
+        quotedDiv.onclick = () => {
+            scrollToQuotedMessage(msg.quoted_message.timestamp);
+        };
+
+        messageDiv.appendChild(quotedDiv);
+    }
 
     const timeDiv = document.createElement('div');
     timeDiv.className = 'message-time';
