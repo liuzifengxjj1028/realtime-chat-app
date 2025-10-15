@@ -66,17 +66,23 @@ const cancelBotSettingsBtn = document.getElementById('cancel-bot-settings-btn');
 const saveBotSettingsBtn = document.getElementById('save-bot-settings-btn');
 const botPromptInput = document.getElementById('bot-prompt-input');
 
+// 普通输入区域
+const inputArea = document.getElementById('input-area');
+
 // 机器人输入区域相关元素
 const botInputArea = document.getElementById('bot-input-area');
 const botTextInput = document.getElementById('bot-text-input');
-const submitTextBtn = document.getElementById('submit-text-btn');
 const botPdfInput = document.getElementById('bot-pdf-input');
 const botPdfDropZone = document.getElementById('bot-pdf-drop-zone');
 const botPdfFileInfo = document.getElementById('bot-pdf-file-info');
 const botPdfFileName = document.getElementById('bot-pdf-file-name');
 const botPdfFileSize = document.getElementById('bot-pdf-file-size');
 const botRemovePdfBtn = document.getElementById('bot-remove-pdf-btn');
-const submitPdfBtn = document.getElementById('submit-pdf-btn');
+const botSubmitBtn = document.getElementById('bot-submit-btn');
+const botResultArea = document.getElementById('bot-result-area');
+const botResultContent = document.getElementById('bot-result-content');
+
+console.log('botSubmitBtn元素:', botSubmitBtn);
 
 let selectedBotPdfFile = null;
 
@@ -123,7 +129,13 @@ function handleMessage(data) {
             updateContactsList(data.users);
             break;
         case 'new_message':
-            receiveMessage(data);
+            // 如果是机器人回复，显示在结果区域
+            if (data.from === '怡总' && currentChatWith === '怡总') {
+                botResultContent.textContent = data.content;
+                botResultArea.style.display = 'block';
+            } else {
+                receiveMessage(data);
+            }
             break;
         case 'message_read':
             markMessageAsRead(data);
@@ -277,9 +289,11 @@ function selectContact(username) {
     if (contactInfo && contactInfo.isBot) {
         botSettingsBtn.style.display = 'block';
         botInputArea.style.display = 'block';
+        inputArea.style.display = 'none'; // 隐藏普通输入区域
     } else {
         botSettingsBtn.style.display = 'none';
         botInputArea.style.display = 'none';
+        inputArea.style.display = 'flex'; // 显示普通输入区域
     }
 
     // 更新联系人列表样式
@@ -1077,6 +1091,11 @@ function selectGroup(groupId, groupName) {
     currentChatType = 'group';
     chatWithName.textContent = groupName + ' (群聊)';
 
+    // 群聊总是显示普通输入区域，隐藏机器人输入区域
+    botSettingsBtn.style.display = 'none';
+    botInputArea.style.display = 'none';
+    inputArea.style.display = 'flex';
+
     // 更新样式
     document.querySelectorAll('.contact-item').forEach(item => {
         item.classList.remove('active');
@@ -1265,21 +1284,6 @@ window.addEventListener('load', () => {
 
 // ============ 机器人输入区域功能 ============
 
-// 提交文本按钮
-submitTextBtn.addEventListener('click', () => {
-    const content = botTextInput.value.trim();
-    if (!content) {
-        alert('请输入或粘贴聊天记录！');
-        return;
-    }
-
-    // 发送给怡总
-    sendMessage(content);
-
-    // 清空输入框
-    botTextInput.value = '';
-});
-
 // PDF上传区域点击
 botPdfDropZone.addEventListener('click', () => {
     botPdfInput.click();
@@ -1325,7 +1329,7 @@ function handleBotPdfFile(file) {
     selectedBotPdfFile = file;
     botPdfFileName.textContent = file.name;
     botPdfFileSize.textContent = formatFileSize(file.size);
-    botPdfFileInfo.style.display = 'block';
+    botPdfFileInfo.style.display = 'flex';
     botPdfDropZone.style.display = 'none';
 }
 
@@ -1344,42 +1348,73 @@ function formatFileSize(bytes) {
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
 }
 
-// 提交PDF按钮
-submitPdfBtn.addEventListener('click', async () => {
-    if (!selectedBotPdfFile) {
-        alert('请选择PDF文件！');
-        return;
-    }
+// 统一的总结按钮
+if (botSubmitBtn) {
+    console.log('正在绑定总结按钮事件...');
+    botSubmitBtn.addEventListener('click', async () => {
+        console.log('总结按钮被点击');
+        let content = '';
 
-    try {
-        submitPdfBtn.disabled = true;
-        submitPdfBtn.textContent = '📤 处理中...';
+        // 优先使用文本输入
+        const textContent = botTextInput.value.trim();
+        console.log('文本内容:', textContent);
+        if (textContent) {
+            content = textContent;
+        } else if (selectedBotPdfFile) {
+            // 如果没有文本，使用PDF
+            try {
+                botSubmitBtn.disabled = true;
+                botSubmitBtn.textContent = '📤 处理中...';
 
-        const content = await extractPdfText(selectedBotPdfFile);
-        if (!content) {
-            alert('PDF文件内容为空或无法读取！');
-            submitPdfBtn.disabled = false;
-            submitPdfBtn.textContent = '📤 提交PDF总结';
+                content = await extractPdfText(selectedBotPdfFile);
+                if (!content) {
+                    alert('PDF文件内容为空或无法读取！');
+                    botSubmitBtn.disabled = false;
+                    botSubmitBtn.textContent = '📊 开始总结';
+                    return;
+                }
+            } catch (error) {
+                alert('PDF文件读取失败：' + error.message);
+                botSubmitBtn.disabled = false;
+                botSubmitBtn.textContent = '📊 开始总结';
+                return;
+            }
+        } else {
+            alert('请输入聊天记录或上传PDF文件！');
             return;
         }
 
+        // 显示加载状态
+        botResultArea.style.display = 'block';
+        botResultContent.innerHTML = '<div style="text-align: center; padding: 40px;"><div style="border: 4px solid #f3f3f3; border-top: 4px solid #6c5ce7; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div><div style="color: #666;">AI正在分析中...</div></div>';
+
         // 发送给怡总
-        sendMessage(content);
+        console.log('准备发送消息给怡总，内容长度:', content.length);
+        ws.send(JSON.stringify({
+            type: 'send_message',
+            to: '怡总',
+            content: content,
+            content_type: 'text',
+            timestamp: Date.now()
+        }));
+        console.log('消息已发送');
 
-        // 清空PDF
-        selectedBotPdfFile = null;
-        botPdfInput.value = '';
-        botPdfFileInfo.style.display = 'none';
-        botPdfDropZone.style.display = 'flex';
+        // 清空输入
+        botTextInput.value = '';
+        if (selectedBotPdfFile) {
+            selectedBotPdfFile = null;
+            botPdfInput.value = '';
+            botPdfFileInfo.style.display = 'none';
+            botPdfDropZone.style.display = 'flex';
+        }
 
-        submitPdfBtn.disabled = false;
-        submitPdfBtn.textContent = '📤 提交PDF总结';
-    } catch (error) {
-        alert('PDF文件读取失败：' + error.message);
-        submitPdfBtn.disabled = false;
-        submitPdfBtn.textContent = '📤 提交PDF总结';
-    }
-});
+        botSubmitBtn.disabled = false;
+        botSubmitBtn.textContent = '📊 开始总结';
+    });
+    console.log('总结按钮事件绑定完成');
+} else {
+    console.error('错误：找不到botSubmitBtn元素！');
+}
 
 // 提取PDF文本（简化版本，实际需要pdf.js库）
 async function extractPdfText(file) {

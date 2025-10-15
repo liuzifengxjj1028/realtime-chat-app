@@ -170,6 +170,8 @@ async def handle_register(ws, data):
 
 async def call_llm_api(prompt, user_content):
     """调用LLM API进行总结 - 支持Claude API"""
+    print(f'[DEBUG] call_llm_api 开始执行...')
+
     # 优先从环境变量读取
     api_key = os.environ.get('ANTHROPIC_API_KEY', '')
 
@@ -186,6 +188,7 @@ async def call_llm_api(prompt, user_content):
     print(f'[DEBUG] API密钥状态: {"已配置" if api_key else "未配置"} (长度: {len(api_key) if api_key else 0})')
 
     if not api_key:
+        print('[DEBUG] 错误：未配置API密钥')
         return "错误：未配置API密钥。请设置ANTHROPIC_API_KEY环境变量。"
 
     try:
@@ -222,9 +225,12 @@ async def call_llm_api(prompt, user_content):
 
 async def handle_bot_message(from_user, content, content_type):
     """处理发送给机器人的消息"""
+    print(f'[DEBUG] handle_bot_message 被调用: from_user={from_user}, content_type={content_type}, content长度={len(content)}')
+
     # 获取用户的机器人配置
     user_config = bot_configs.get(from_user, {})
     user_prompt = user_config.get('prompt', '请总结以下聊天记录的主要内容和关键信息。')
+    print(f'[DEBUG] 用户prompt: {user_prompt[:50]}...')
 
     # 检查是否是配置命令
     if content.startswith('/setprompt '):
@@ -266,8 +272,10 @@ async def handle_bot_message(from_user, content, content_type):
 
     # 处理文本内容（聊天记录）
     if content_type == 'text':
+        print(f'[DEBUG] 准备调用 call_llm_api...')
         # 调用LLM API进行总结
         summary = await call_llm_api(user_prompt, content)
+        print(f'[DEBUG] call_llm_api 返回结果长度: {len(summary)}')
         return f"📊 总结结果：\n\n{summary}"
 
     # 处理PDF文件
