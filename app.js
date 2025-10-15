@@ -982,7 +982,7 @@ function handleMessageRecalled(data) {
         }
 
         // 如果当前正在查看这个私聊，先移除原消息再显示撤回通知
-        if (currentChatWith === data.from && currentChatType === 'private') {
+        if (currentChatWith === data.from && currentChatType === 'user') {
             console.log('正在查看该用户的私聊，显示撤回通知');
             removeMessageFromUI(data.timestamp);
             displayMessage(recallNotice);
