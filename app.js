@@ -2216,6 +2216,8 @@ sendVoiceBtn.addEventListener('click', async () => {
 
             // 显示语音消息
             console.log('准备显示语音消息');
+            console.log('message对象:', message);
+            console.log('合并后的对象:', {...message, from: currentUser});
             displayMessage({...message, from: currentUser});
             console.log('语音消息已显示');
 
