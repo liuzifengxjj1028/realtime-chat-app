@@ -257,6 +257,11 @@ function loadChatHistory(chatWith) {
     } else {
         chatMessages.forEach(msg => {
             displayMessage(msg);
+
+            // 如果是群聊，为所有不是自己发送的消息发送已读回执
+            if (currentChatType === 'group' && msg.from !== currentUser) {
+                sendGroupMessageReadReceipt(chatWith, msg.timestamp);
+            }
         });
     }
 }
@@ -466,12 +471,7 @@ function displayMessage(msg) {
         timeDiv.appendChild(recallBtn);
 
         // 如果是群聊消息，显示阅读状态
-        console.log('显示消息 - currentChatType:', currentChatType);
-        console.log('显示消息 - msg.read_by:', msg.read_by);
-        console.log('显示消息 - msg.unread_members:', msg.unread_members);
-
         if (currentChatType === 'group' && msg.read_by && msg.unread_members) {
-            console.log('✓ 满足条件，显示阅读状态');
             const readStatusDiv = document.createElement('span');
             readStatusDiv.className = 'read-status';
             readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 13px; color: #ffffff; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 10px; cursor: pointer; font-weight: 500;';
@@ -1050,16 +1050,9 @@ function sendMessageWithGroup() {
         const group = groups.get(currentChatWith);
         const groupMembers = group ? group.members : [];
 
-        console.log('发送群消息 - 群组ID:', currentChatWith);
-        console.log('发送群消息 - 群组信息:', group);
-        console.log('发送群消息 - 群组成员:', groupMembers);
-
         // 初始化已读列表（发送者自动标记为已读）
         const read_by = [currentUser];
         const unread_members = groupMembers.filter(m => m !== currentUser);
-
-        console.log('发送群消息 - read_by:', read_by);
-        console.log('发送群消息 - unread_members:', unread_members);
 
         messages.get(chatKey).push({
             ...message,
