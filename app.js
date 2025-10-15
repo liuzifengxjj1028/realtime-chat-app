@@ -349,18 +349,25 @@ function sendImage(file) {
         if (!messages.has(chatKey)) {
             messages.set(chatKey, []);
         }
-        messages.get(chatKey).push({
+
+        // 如果是群聊，添加阅读状态字段
+        let messageWithStatus = {
             ...message,
             from: currentUser,
             read: false
-        });
+        };
+
+        if (currentChatType === 'group') {
+            const group = groups.get(currentChatWith);
+            const groupMembers = group ? group.members : [];
+            messageWithStatus.read_by = [currentUser];
+            messageWithStatus.unread_members = groupMembers.filter(m => m !== currentUser);
+        }
+
+        messages.get(chatKey).push(messageWithStatus);
 
         // 显示消息
-        displayMessage({
-            ...message,
-            from: currentUser,
-            read: false
-        });
+        displayMessage(messageWithStatus);
     };
     reader.readAsDataURL(file);
 }
@@ -1033,17 +1040,30 @@ function sendMessageWithGroup() {
         if (!messages.has(chatKey)) {
             messages.set(chatKey, []);
         }
+
+        // 获取群组成员列表
+        const group = groups.get(currentChatWith);
+        const groupMembers = group ? group.members : [];
+
+        // 初始化已读列表（发送者自动标记为已读）
+        const read_by = [currentUser];
+        const unread_members = groupMembers.filter(m => m !== currentUser);
+
         messages.get(chatKey).push({
             ...message,
             from: currentUser,
-            read: false
+            read: false,
+            read_by: read_by,
+            unread_members: unread_members
         });
 
         // 显示消息
         displayMessage({
             ...message,
             from: currentUser,
-            read: false
+            read: false,
+            read_by: read_by,
+            unread_members: unread_members
         });
 
         messageInput.value = '';
