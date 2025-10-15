@@ -435,6 +435,7 @@ async def handle_send_message(data, from_user):
     content_type = data.get('content_type', 'text')
     timestamp = data.get('timestamp', int(datetime.now().timestamp() * 1000))
     quoted_message = data.get('quoted_message')
+    duration = data.get('duration')  # 语音消息时长
 
     if not to_user or not content or not from_user:
         return
@@ -456,6 +457,10 @@ async def handle_send_message(data, from_user):
     # 如果有引用消息，添加到消息中
     if quoted_message:
         message['quoted_message'] = quoted_message
+
+    # 如果是语音消息，添加时长
+    if duration is not None:
+        message['duration'] = duration
 
     messages_store[chat_key].append(message)
     save_messages()  # 保存消息
@@ -661,6 +666,7 @@ async def handle_send_group_message(data, from_user):
     content_type = data.get('content_type', 'text')
     timestamp = data.get('timestamp', int(datetime.now().timestamp() * 1000))
     quoted_message = data.get('quoted_message')
+    duration = data.get('duration')  # 语音消息时长
 
     if not group_id or not content:
         return
@@ -697,6 +703,10 @@ async def handle_send_group_message(data, from_user):
     # 如果有引用消息，添加到消息中
     if quoted_message:
         message['quoted_message'] = quoted_message
+
+    # 如果是语音消息，添加时长
+    if duration is not None:
+        message['duration'] = duration
 
     messages_store[group_id].append(message)
     save_messages()  # 保存消息
