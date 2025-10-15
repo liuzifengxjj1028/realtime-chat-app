@@ -170,7 +170,18 @@ async def handle_register(ws, data):
 
 async def call_llm_api(prompt, user_content):
     """调用LLM API进行总结 - 支持Claude API"""
+    # 优先从环境变量读取
     api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+
+    # Railway环境变量备选方案：尝试从配置文件读取
+    if not api_key:
+        try:
+            config_file = os.path.join(os.path.dirname(__file__), '.api_config')
+            if os.path.exists(config_file):
+                with open(config_file, 'r') as f:
+                    api_key = f.read().strip()
+        except:
+            pass
 
     print(f'[DEBUG] API密钥状态: {"已配置" if api_key else "未配置"} (长度: {len(api_key) if api_key else 0})')
 
