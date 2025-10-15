@@ -1483,19 +1483,62 @@ if (botSubmitBtn) {
     console.error('错误：找不到botSubmitBtn元素！');
 }
 
-// 提取PDF文本（简化版本，实际需要pdf.js库）
+// 提取PDF文本（使用pdf.js库）
 async function extractPdfText(file) {
     return new Promise((resolve, reject) => {
+        // 检查文件大小（限制10MB）
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            reject(new Error('PDF文件大小超过10MB限制'));
+            return;
+        }
+
         const reader = new FileReader();
 
         reader.onload = async function(e) {
             try {
-                // 这里需要使用pdf.js库来解析PDF
-                // 暂时返回提示信息
-                const fileName = file.name;
-                resolve(`[PDF文件: ${fileName}]\n\n提示：完整的PDF文本提取功能需要pdf.js库支持。当前版本请使用左侧文本框功能，或者将PDF内容复制粘贴到文本框中。`);
+                const arrayBuffer = e.target.result;
+
+                // 配置 pdf.js worker
+                if (typeof pdfjsLib !== 'undefined') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                } else {
+                    reject(new Error('PDF.js 库未加载'));
+                    return;
+                }
+
+                // 加载PDF文档
+                const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
+                const pdf = await loadingTask.promise;
+
+                console.log(`PDF加载成功，共 ${pdf.numPages} 页`);
+
+                let fullText = '';
+
+                // 逐页提取文本
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const textContent = await page.getTextContent();
+
+                    // 提取页面文本
+                    const pageText = textContent.items
+                        .map(item => item.str)
+                        .join(' ');
+
+                    fullText += pageText + '\n\n';
+                }
+
+                if (!fullText.trim()) {
+                    reject(new Error('PDF文件中没有可提取的文本内容（可能是扫描版PDF）'));
+                    return;
+                }
+
+                console.log(`成功提取 ${fullText.length} 个字符`);
+                resolve(fullText.trim());
+
             } catch (error) {
-                reject(error);
+                console.error('PDF解析错误:', error);
+                reject(new Error('PDF文件解析失败：' + error.message));
             }
         };
 
