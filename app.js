@@ -696,6 +696,13 @@ function displayMessage(msg) {
         emptyState.remove();
     }
 
+    console.log('displayMessage 被调用:', {
+        msgFrom: msg.from,
+        currentUser: currentUser,
+        isSent: msg.from === currentUser,
+        contentType: msg.content_type
+    });
+
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${msg.from === currentUser ? 'sent' : 'received'}`;
     messageDiv.dataset.timestamp = msg.timestamp;
