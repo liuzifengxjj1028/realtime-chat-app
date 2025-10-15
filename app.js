@@ -299,20 +299,29 @@ function addContact(username) {
 
     if (!contacts.has(username)) {
         // 新联系人，添加到列表
-        contacts.set(username, {online: true});
-        addContactToList(username);
+        contacts.set(username, {online: true, isBot: false});
+        addContactToList(username, true, false);
     } else {
         // 已存在的联系人上线，更新状态
-        contacts.set(username, {online: true});
+        const contactInfo = contacts.get(username);
+        contacts.set(username, {...contactInfo, online: true});
         setContactOnlineStatus(username, true);
     }
 }
 
 // 标记联系人为离线（不删除）
 function removeContact(username) {
+    if (username === currentUser) return;
+
     if (contacts.has(username)) {
-        contacts.set(username, {online: false});
+        // 已存在的联系人，只更新状态为离线
+        const contactInfo = contacts.get(username);
+        contacts.set(username, {...contactInfo, online: false});
         setContactOnlineStatus(username, false);
+    } else {
+        // 首次遇到这个用户（从未见过），添加为离线状态
+        contacts.set(username, {online: false, isBot: false});
+        addContactToList(username, false, false);
     }
 }
 
