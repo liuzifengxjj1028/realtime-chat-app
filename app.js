@@ -2408,3 +2408,122 @@ function playVoiceMessage(base64Audio, playBtn, voiceInfo) {
         currentPlayingBtn = null;
     };
 }
+
+// ==================== 移动端适配功能 ====================
+
+// 检测是否为移动设备
+function isMobileDevice() {
+    return window.innerWidth <= 768;
+}
+
+// 侧边栏控制
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+const backBtn = document.getElementById('back-btn');
+
+// 打开侧边栏
+function openSidebar() {
+    if (isMobileDevice()) {
+        sidebar.classList.add('active');
+        sidebarOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden'; // 禁止背景滚动
+    }
+}
+
+// 关闭侧边栏
+function closeSidebar() {
+    if (isMobileDevice()) {
+        sidebar.classList.remove('active');
+        sidebarOverlay.classList.remove('active');
+        document.body.style.overflow = ''; // 恢复滚动
+    }
+}
+
+// 点击遮罩层关闭侧边栏
+if (sidebarOverlay) {
+    sidebarOverlay.addEventListener('click', closeSidebar);
+}
+
+// 返回按钮功能（移动端显示联系人列表）
+if (backBtn) {
+    backBtn.addEventListener('click', () => {
+        if (isMobileDevice()) {
+            openSidebar();
+        }
+    });
+}
+
+// 修改selectContact函数以支持移动端
+const originalSelectContact = selectContact;
+selectContact = function(username) {
+    originalSelectContact(username);
+
+    // 移动端：选择联系人后关闭侧边栏，显示返回按钮
+    if (isMobileDevice()) {
+        closeSidebar();
+        if (backBtn) {
+            backBtn.style.display = 'inline-flex';
+        }
+    }
+};
+
+// 修改selectGroup函数以支持移动端
+const originalSelectGroup = selectGroup;
+selectGroup = function(groupId, groupName) {
+    originalSelectGroup(groupId, groupName);
+
+    // 移动端：选择群组后关闭侧边栏，显示返回按钮
+    if (isMobileDevice()) {
+        closeSidebar();
+        if (backBtn) {
+            backBtn.style.display = 'inline-flex';
+        }
+    }
+};
+
+// 窗口大小变化时调整UI
+window.addEventListener('resize', () => {
+    if (!isMobileDevice()) {
+        // 桌面模式：隐藏返回按钮，关闭侧边栏动画
+        if (backBtn) {
+            backBtn.style.display = 'none';
+        }
+        closeSidebar();
+    } else {
+        // 移动模式：如果有选中的聊天对象，显示返回按钮
+        if (currentChatWith && backBtn) {
+            backBtn.style.display = 'inline-flex';
+        }
+    }
+});
+
+// 初始化时检查
+if (isMobileDevice() && currentChatWith && backBtn) {
+    backBtn.style.display = 'inline-flex';
+}
+
+// 防止iPhone Safari的橡皮筋效果
+document.addEventListener('touchmove', function(e) {
+    if (e.target.closest('.messages-container') || e.target.closest('.contacts-list')) {
+        // 允许消息和联系人列表滚动
+        return;
+    }
+    // 其他区域阻止默认行为
+    if (e.touches.length > 1) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
+// 优化移动端输入框体验
+if (messageInput && isMobileDevice()) {
+    // 输入框获得焦点时，滚动到底部
+    messageInput.addEventListener('focus', () => {
+        setTimeout(() => {
+            if (messagesContainer) {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }, 300);
+    });
+}
+
+console.log('移动端适配已启用:', isMobileDevice() ? '是' : '否');

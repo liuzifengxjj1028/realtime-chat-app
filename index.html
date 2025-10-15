@@ -2,7 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
     <title>实时聊天应用</title>
     <style>
         * {
@@ -854,21 +857,288 @@
         }
 
         /* 响应式设计 */
+        /* iPhone 移动端适配 */
         @media (max-width: 768px) {
+            body {
+                align-items: stretch;
+                padding: 0;
+            }
+
+            #login-screen {
+                width: 100%;
+                height: 100vh;
+                max-width: none;
+                border-radius: 0;
+                padding: 60px 30px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+            }
+
+            #login-screen h1 {
+                font-size: 32px;
+                margin-bottom: 40px;
+            }
+
+            #nickname-input {
+                font-size: 16px;
+                padding: 16px;
+                height: auto;
+            }
+
+            #login-btn {
+                font-size: 16px;
+                padding: 16px;
+                height: auto;
+            }
+
+            #chat-screen {
+                width: 100%;
+                height: 100vh;
+            }
+
+            .chat-container {
+                width: 100%;
+                height: 100vh;
+                max-width: none;
+                border-radius: 0;
+                flex-direction: column;
+                position: relative;
+            }
+
+            /* 侧边栏变为全屏可滑出 */
             .sidebar {
-                width: 280px;
+                position: fixed;
+                left: -100%;
+                top: 0;
+                width: 80%;
+                max-width: 300px;
+                height: 100vh;
+                z-index: 1000;
+                transition: left 0.3s ease;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+            }
+
+            .sidebar.active {
+                left: 0;
+            }
+
+            /* 遮罩层 */
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100vh;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+
+            .chat-area {
+                flex: 1;
+                width: 100%;
+                border-radius: 0;
+                display: flex;
+                flex-direction: column;
             }
 
             .chat-header {
-                padding: 16px 20px;
+                padding: 12px 16px;
+                min-height: 56px;
+                flex-direction: row;
+                align-items: center;
+            }
+
+            .chat-header h3 {
+                font-size: 17px;
+                flex: 1;
+            }
+
+            /* 添加返回按钮 */
+            .back-btn {
+                display: inline-flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                border: none;
+                background: rgba(255,255,255,0.2);
+                color: white;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-right: 12px;
+                font-size: 18px;
+                padding: 0;
+            }
+
+            #ai-summary-btn, #bot-settings-btn {
+                font-size: 13px !important;
+                padding: 6px 12px !important;
             }
 
             .messages-container {
-                padding: 16px;
+                padding: 12px;
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .message {
+                margin-bottom: 16px;
             }
 
             .message-content {
-                max-width: 75%;
+                max-width: 80%;
+                font-size: 15px;
+                padding: 10px 14px;
+            }
+
+            .message-sender {
+                font-size: 13px !important;
+            }
+
+            .message-time {
+                font-size: 11px;
+            }
+
+            .input-area {
+                padding: 10px 12px;
+                gap: 8px;
+                border-radius: 0;
+                /* 适配iPhone底部安全区域 */
+                padding-bottom: max(10px, env(safe-area-inset-bottom));
+            }
+
+            #message-input {
+                font-size: 16px;
+                padding: 10px 14px;
+                border-radius: 20px;
+            }
+
+            .image-btn, .send-btn {
+                width: 36px;
+                height: 36px;
+                min-width: 36px;
+            }
+
+            .voice-recorder, .voice-preview {
+                padding: 20px;
+                border-radius: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
+            }
+
+            /* 语音消息适配 */
+            .voice-message {
+                min-width: 150px;
+            }
+
+            .voice-play-btn {
+                width: 36px;
+                height: 36px;
+            }
+
+            /* 联系人列表 */
+            .contact-item, .group-item {
+                padding: 14px 16px;
+            }
+
+            .contact-name {
+                font-size: 16px;
+            }
+
+            .unread-badge {
+                min-width: 20px;
+                height: 20px;
+                font-size: 11px;
+            }
+
+            /* 创建群聊按钮 */
+            .create-group-btn {
+                font-size: 14px;
+                padding: 10px 16px;
+            }
+
+            /* 模态框适配 */
+            .modal {
+                padding: 20px;
+            }
+
+            .modal-content {
+                width: 90%;
+                max-width: none;
+                border-radius: 16px;
+                max-height: 80vh;
+            }
+
+            .modal-content h2 {
+                font-size: 20px;
+            }
+
+            /* 引用预览适配 */
+            #quote-preview {
+                padding: 8px 12px;
+                margin: 0 12px;
+            }
+
+            /* 空状态 */
+            .empty-state {
+                padding: 40px 20px;
+            }
+
+            .empty-state svg {
+                width: 48px;
+                height: 48px;
+            }
+
+            .empty-state h3 {
+                font-size: 18px;
+            }
+
+            .empty-state p {
+                font-size: 14px;
+            }
+
+            /* 禁用文本选择（更像原生app） */
+            .chat-header, .sidebar-header, .contact-item, .group-item {
+                -webkit-user-select: none;
+                user-select: none;
+            }
+
+            /* 滚动条隐藏 */
+            .messages-container::-webkit-scrollbar,
+            .contacts-list::-webkit-scrollbar {
+                display: none;
+            }
+
+            /* 触摸反馈 */
+            .contact-item:active, .group-item:active,
+            .send-btn:active, .image-btn:active,
+            .create-group-btn:active, .back-btn:active {
+                opacity: 0.7;
+            }
+        }
+
+        /* iPhone X 及更新机型的安全区域适配 */
+        @supports (padding: max(0px)) {
+            @media (max-width: 768px) {
+                body {
+                    padding-top: env(safe-area-inset-top);
+                }
+
+                .chat-header {
+                    padding-top: max(12px, env(safe-area-inset-top));
+                }
+
+                .sidebar {
+                    padding-top: env(safe-area-inset-top);
+                }
             }
         }
     </style>
@@ -887,8 +1157,11 @@
     <!-- 聊天界面 -->
     <div id="chat-screen">
         <div class="chat-container">
+            <!-- 侧边栏遮罩层 (仅移动端) -->
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
             <!-- 侧边栏 -->
-            <div class="sidebar">
+            <div class="sidebar" id="sidebar">
                 <div class="sidebar-header">
                     <h2 id="current-user-name">用户</h2>
                     <p>在线用户</p>
@@ -903,6 +1176,7 @@
             <!-- 聊天区域 -->
             <div class="chat-area">
                 <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <button class="back-btn" id="back-btn" style="display: none;">‹</button>
                     <h3 id="chat-with-name">选择一个联系人开始聊天</h3>
                     <div style="display: flex; gap: 10px;">
                         <button id="ai-summary-btn" style="padding: 8px 16px; background: #07c160; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">🤖 AI聊天总结</button>
