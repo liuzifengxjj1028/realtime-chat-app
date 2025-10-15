@@ -777,9 +777,87 @@ def create_app():
         )
     })
 
+    # AI聊天总结API处理函数
+    async def summarize_chat_handler(request):
+        """处理AI聊天总结请求"""
+        try:
+            data = await request.json()
+            users = data.get('users', [])
+            start_date = data.get('start_date', '')
+            end_date = data.get('end_date', '')
+            chat_content = data.get('chat_content', '')
+
+            print(f'📊 收到AI总结请求: 用户={users}, 消息数量={len(chat_content.split(chr(10)))}条')
+
+            # 调用Claude API进行总结
+            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            if not api_key:
+                return web.json_response({
+                    'error': 'API密钥未配置'
+                }, status=500)
+
+            # 构建总结prompt
+            prompt = f"""请对以下聊天记录进行详细总结分析：
+
+用户：{', '.join(users)}
+时间段：{start_date} 至 {end_date}
+
+聊天记录：
+{chat_content}
+
+请从以下几个方面进行总结：
+1. 核心主题：讨论的主要话题是什么
+2. 关键信息：提取重要的信息点、决策或结论
+3. 情感基调：对话的整体氛围和情绪
+4. 行动项：是否有需要跟进的事项或待办任务
+5. 其他观察：任何值得注意的模式或特点
+
+请用清晰、简洁的中文进行总结。"""
+
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    'https://api.anthropic.com/v1/messages',
+                    headers={
+                        'x-api-key': api_key,
+                        'anthropic-version': '2023-06-01',
+                        'content-type': 'application/json'
+                    },
+                    json={
+                        'model': 'claude-3-5-sonnet-20241022',
+                        'max_tokens': 2048,
+                        'messages': [{
+                            'role': 'user',
+                            'content': prompt
+                        }]
+                    }
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        print(f'❌ Claude API错误: {error_text}')
+                        return web.json_response({
+                            'error': f'API调用失败: {error_text}'
+                        }, status=500)
+
+                    result = await response.json()
+                    summary = result['content'][0]['text']
+                    print(f'✅ AI总结完成，长度={len(summary)}字符')
+
+                    return web.json_response({
+                        'summary': summary
+                    })
+
+        except Exception as e:
+            print(f'❌ AI总结处理错误: {str(e)}')
+            import traceback
+            traceback.print_exc()
+            return web.json_response({
+                'error': str(e)
+            }, status=500)
+
     # 添加路由
     app.router.add_get('/', index_handler)
     app.router.add_get('/ws', websocket_handler)
+    app.router.add_post('/api/summarize_chat', summarize_chat_handler)
     app.router.add_get('/{filename}', static_handler)
 
     # 配置 CORS

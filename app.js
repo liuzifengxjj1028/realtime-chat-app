@@ -83,6 +83,24 @@ const botSubmitBtn = document.getElementById('bot-submit-btn');
 const botResultArea = document.getElementById('bot-result-area');
 const botResultContent = document.getElementById('bot-result-content');
 
+// AI聊天总结相关元素
+const aiSummaryBtn = document.getElementById('ai-summary-btn');
+const aiSummaryModal = document.getElementById('ai-summary-modal');
+const closeAiSummaryBtn = document.getElementById('close-ai-summary-btn');
+const cancelAiSummaryBtn = document.getElementById('cancel-ai-summary-btn');
+const submitAiSummaryBtn = document.getElementById('submit-ai-summary-btn');
+const userSelectContainer = document.getElementById('user-select-container');
+const summaryStartDate = document.getElementById('summary-start-date');
+const summaryEndDate = document.getElementById('summary-end-date');
+const aiSummaryDrawer = document.getElementById('ai-summary-drawer');
+const drawerOverlay = document.getElementById('drawer-overlay');
+const closeDrawerBtn = document.getElementById('close-drawer-btn');
+const summaryUsersInfo = document.getElementById('summary-users-info');
+const summaryTimeInfo = document.getElementById('summary-time-info');
+const summaryCountInfo = document.getElementById('summary-count-info');
+const summaryLoading = document.getElementById('summary-loading');
+const summaryResultContent = document.getElementById('summary-result-content');
+
 console.log('botSubmitBtn元素:', botSubmitBtn);
 
 let selectedBotPdfFile = null;
@@ -1646,3 +1664,167 @@ async function extractPdfText(file) {
         reader.readAsArrayBuffer(file);
     });
 }
+
+// ========== AI聊天总结功能 ==========
+
+// 打开AI总结对话框
+aiSummaryBtn.addEventListener('click', () => {
+    // 生成用户选择列表
+    userSelectContainer.innerHTML = '';
+
+    // 添加所有联系人（排除机器人和当前用户）
+    contacts.forEach((contactInfo, username) => {
+        if (username !== currentUser && !contactInfo.isBot) {
+            const checkbox = document.createElement('label');
+            checkbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s;';
+            checkbox.innerHTML = `
+                <input type="checkbox" value="${username}" style="margin-right: 8px;">
+                <span style="font-size: 14px; color: #333;">${username}</span>
+                <span style="font-size: 12px; color: #999; margin-left: 8px;">${contactInfo.online ? '在线' : '离线'}</span>
+            `;
+            checkbox.onmouseover = () => checkbox.style.background = '#f0f0f0';
+            checkbox.onmouseout = () => checkbox.style.background = 'transparent';
+            userSelectContainer.appendChild(checkbox);
+        }
+    });
+
+    // 设置默认时间范围（最近7天）
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    summaryEndDate.value = today.toISOString().split('T')[0];
+    summaryStartDate.value = weekAgo.toISOString().split('T')[0];
+
+    aiSummaryModal.style.display = 'flex';
+});
+
+// 关闭对话框
+closeAiSummaryBtn.addEventListener('click', () => {
+    aiSummaryModal.style.display = 'none';
+});
+
+cancelAiSummaryBtn.addEventListener('click', () => {
+    aiSummaryModal.style.display = 'none';
+});
+
+// 提交AI总结请求
+submitAiSummaryBtn.addEventListener('click', async () => {
+    // 获取选中的用户
+    const selectedUsers = Array.from(userSelectContainer.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+
+    if (selectedUsers.length === 0) {
+        alert('请至少选择一个用户');
+        return;
+    }
+
+    if (!summaryStartDate.value || !summaryEndDate.value) {
+        alert('请选择时间范围');
+        return;
+    }
+
+    const startDate = new Date(summaryStartDate.value);
+    const endDate = new Date(summaryEndDate.value);
+    endDate.setHours(23, 59, 59, 999); // 设置为当天结束
+
+    if (startDate > endDate) {
+        alert('开始日期不能晚于结束日期');
+        return;
+    }
+
+    // 收集符合条件的消息
+    const filteredMessages = [];
+
+    messages.forEach((msgList, chatKey) => {
+        msgList.forEach(msg => {
+            const msgDate = new Date(msg.timestamp);
+
+            // 检查是否在时间范围内
+            if (msgDate >= startDate && msgDate <= endDate) {
+                // 检查发送者或接收者是否在选中用户列表中
+                if (selectedUsers.includes(msg.from) || selectedUsers.includes(msg.to)) {
+                    filteredMessages.push(msg);
+                }
+            }
+        });
+    });
+
+    if (filteredMessages.length === 0) {
+        alert('没有找到符合条件的聊天记录');
+        return;
+    }
+
+    // 按时间排序
+    filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+    // 关闭对话框，打开抽屉
+    aiSummaryModal.style.display = 'none';
+    showSummaryDrawer(selectedUsers, startDate, endDate, filteredMessages);
+});
+
+// 显示总结抽屉并调用AI
+async function showSummaryDrawer(users, startDate, endDate, messages) {
+    // 显示抽屉和遮罩
+    drawerOverlay.style.display = 'block';
+    aiSummaryDrawer.style.display = 'block';
+
+    // 显示总结信息
+    summaryUsersInfo.textContent = users.join(', ');
+    summaryTimeInfo.textContent = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    summaryCountInfo.textContent = `${messages.length} 条消息`;
+
+    // 显示加载状态
+    summaryLoading.style.display = 'block';
+    summaryResultContent.textContent = '';
+
+    // 准备消息内容
+    const chatContent = messages.map(msg => {
+        const time = new Date(msg.timestamp).toLocaleString();
+        if (msg.content_type === 'image') {
+            return `[${time}] ${msg.from}: [发送了一张图片]`;
+        } else {
+            return `[${time}] ${msg.from}: ${msg.content}`;
+        }
+    }).join('\n');
+
+    // 调用后端API进行总结
+    try {
+        const response = await fetch('http://localhost:8080/api/summarize_chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                users: users,
+                start_date: startDate.toISOString(),
+                end_date: endDate.toISOString(),
+                chat_content: chatContent
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('API请求失败');
+        }
+
+        const result = await response.json();
+
+        // 隐藏加载状态，显示结果
+        summaryLoading.style.display = 'none';
+        summaryResultContent.textContent = result.summary;
+
+    } catch (error) {
+        console.error('AI总结失败:', error);
+        summaryLoading.style.display = 'none';
+        summaryResultContent.textContent = '总结失败：' + error.message;
+    }
+}
+
+// 关闭抽屉
+closeDrawerBtn.addEventListener('click', () => {
+    aiSummaryDrawer.style.display = 'none';
+    drawerOverlay.style.display = 'none';
+});
+
+drawerOverlay.addEventListener('click', () => {
+    aiSummaryDrawer.style.display = 'none';
+    drawerOverlay.style.display = 'none';
+});
