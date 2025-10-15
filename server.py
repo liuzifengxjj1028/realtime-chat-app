@@ -554,12 +554,34 @@ async def handle_recall_message(data, current_user):
         if current_user not in group['members']:
             return
 
-        # 从消息存储中删除
+        # 从消息存储中删除原消息，但为其他用户保留撤回痕迹
         if group_id in messages_store:
+            # 找到被撤回的消息
+            original_msg = None
+            for msg in messages_store[group_id]:
+                if msg.get('timestamp') == timestamp and msg.get('from') == current_user:
+                    original_msg = msg
+                    break
+
+            # 删除原消息
             messages_store[group_id] = [
                 msg for msg in messages_store[group_id]
                 if not (msg.get('timestamp') == timestamp and msg.get('from') == current_user)
             ]
+
+            # 添加撤回通知消息到历史记录
+            if original_msg:
+                recall_notice = {
+                    'type': 'recall_notice',
+                    'from': current_user,
+                    'group_id': group_id,
+                    'timestamp': timestamp,
+                    'content': f'{current_user} 撤回了一条消息',
+                    'content_type': 'recall_notice',
+                    'original_timestamp': timestamp
+                }
+                messages_store[group_id].append(recall_notice)
+                save_messages()
 
         # 通知所有群成员（除了自己）
         for member in group['members']:
@@ -580,12 +602,34 @@ async def handle_recall_message(data, current_user):
 
         chat_key = get_chat_key(current_user, to_user)
 
-        # 从消息存储中删除
+        # 从消息存储中删除原消息，但为对方保留撤回痕迹
         if chat_key in messages_store:
+            # 找到被撤回的消息
+            original_msg = None
+            for msg in messages_store[chat_key]:
+                if msg.get('timestamp') == timestamp and msg.get('from') == current_user:
+                    original_msg = msg
+                    break
+
+            # 删除原消息
             messages_store[chat_key] = [
                 msg for msg in messages_store[chat_key]
                 if not (msg.get('timestamp') == timestamp and msg.get('from') == current_user)
             ]
+
+            # 添加撤回通知消息到历史记录
+            if original_msg:
+                recall_notice = {
+                    'type': 'recall_notice',
+                    'from': current_user,
+                    'to': to_user,
+                    'timestamp': timestamp,
+                    'content': f'{current_user} 撤回了一条消息',
+                    'content_type': 'recall_notice',
+                    'original_timestamp': timestamp
+                }
+                messages_store[chat_key].append(recall_notice)
+                save_messages()
 
         # 通知对方
         if to_user in connected_users:

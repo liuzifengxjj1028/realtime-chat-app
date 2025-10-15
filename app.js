@@ -780,6 +780,14 @@ function displayMessage(msg) {
         };
 
         contentDiv.appendChild(voiceDiv);
+    } else if (msg.content_type === 'recall_notice') {
+        // 撤回通知消息 - 居中灰色样式
+        messageDiv.className = 'message recall-notice';
+        const textDiv = document.createElement('div');
+        textDiv.textContent = msg.content;
+        textDiv.style.cssText = 'color: #999; font-size: 13px; text-align: center; font-style: italic;';
+        contentDiv.appendChild(textDiv);
+        contentDiv.style.cssText = 'background: transparent; box-shadow: none; padding: 8px 0;';
     } else {
         const textDiv = document.createElement('div');
         textDiv.textContent = msg.content;
@@ -788,13 +796,15 @@ function displayMessage(msg) {
 
     messageDiv.appendChild(contentDiv);
 
-    const timeDiv = document.createElement('div');
-    timeDiv.className = 'message-time';
-    timeDiv.textContent = formatTime(msg.timestamp);
-    messageDiv.appendChild(timeDiv);
+    // 撤回通知不显示时间和撤回按钮
+    if (msg.content_type !== 'recall_notice') {
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'message-time';
+        timeDiv.textContent = formatTime(msg.timestamp);
+        messageDiv.appendChild(timeDiv);
 
-    // 如果是自己发送的消息，添加撤回按钮
-    if (msg.from === currentUser) {
+        // 如果是自己发送的消息，添加撤回按钮
+        if (msg.from === currentUser) {
         const recallBtn = document.createElement('button');
         recallBtn.className = 'recall-btn';
         recallBtn.textContent = '撤回';
@@ -835,6 +845,7 @@ function displayMessage(msg) {
             };
 
             timeDiv.appendChild(readStatusDiv);
+        }
         }
     }
 
@@ -910,7 +921,7 @@ function removeMessageFromStore(timestamp) {
 function handleMessageRecalled(data) {
     removeMessageFromUI(data.timestamp);
 
-    // 从相应的消息存储中删除
+    // 从相应的消息存储中删除原消息，并添加撤回通知
     if (data.group_id) {
         // 群聊消息
         const chatMessages = messages.get(data.group_id);
@@ -919,6 +930,25 @@ function handleMessageRecalled(data) {
             if (index !== -1) {
                 chatMessages.splice(index, 1);
             }
+        }
+
+        // 添加撤回通知到消息列表
+        const recallNotice = {
+            type: 'recall_notice',
+            from: data.from,
+            group_id: data.group_id,
+            timestamp: data.timestamp,
+            content: `${data.from} 撤回了一条消息`,
+            content_type: 'recall_notice'
+        };
+
+        if (chatMessages) {
+            chatMessages.push(recallNotice);
+        }
+
+        // 如果当前正在查看这个群聊，显示撤回通知
+        if (currentChatWith === data.group_id && currentChatType === 'group') {
+            displayMessage(recallNotice);
         }
     } else {
         // 私聊消息
@@ -929,6 +959,24 @@ function handleMessageRecalled(data) {
             if (index !== -1) {
                 chatMessages.splice(index, 1);
             }
+        }
+
+        // 添加撤回通知到消息列表
+        const recallNotice = {
+            type: 'recall_notice',
+            from: data.from,
+            timestamp: data.timestamp,
+            content: `${data.from} 撤回了一条消息`,
+            content_type: 'recall_notice'
+        };
+
+        if (chatMessages) {
+            chatMessages.push(recallNotice);
+        }
+
+        // 如果当前正在查看这个私聊，显示撤回通知
+        if (currentChatWith === data.from && currentChatType === 'private') {
+            displayMessage(recallNotice);
         }
     }
 }
