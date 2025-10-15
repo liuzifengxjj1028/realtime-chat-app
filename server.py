@@ -633,9 +633,13 @@ def create_app():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
+    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
     print('=' * 60)
     print(f'🚀 实时聊天应用启动')
     print(f'📍 访问地址: http://localhost:{port}')
+    print(f'🔑 API密钥状态: {"✅ 已配置" if api_key else "❌ 未配置"}')
+    if api_key:
+        print(f'🔑 API密钥长度: {len(api_key)} 字符')
     print('=' * 60)
 
     app = create_app()
