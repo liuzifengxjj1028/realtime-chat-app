@@ -1949,7 +1949,7 @@ drawerOverlay.addEventListener('click', () => {
 const voiceBtn = document.getElementById('voice-btn');
 const voiceRecorder = document.getElementById('voice-recorder');
 const voicePreview = document.getElementById('voice-preview');
-const inputArea = document.getElementById('input-area');
+// inputArea already declared at line 71
 const recordingTime = document.getElementById('recording-time');
 const cancelRecordingBtn = document.getElementById('cancel-recording-btn');
 const stopRecordingBtn = document.getElementById('stop-recording-btn');
