@@ -406,6 +406,15 @@ async def handle_mark_group_message_read(data, current_user):
     # 查找消息并更新已读状态
     for msg in messages_store[group_id]:
         if msg.get('timestamp') == timestamp:
+            # 如果是历史消息，初始化阅读状态字段
+            if 'read_by' not in msg or 'unread_members' not in msg:
+                group = groups_store[group_id]
+                msg_sender = msg.get('from')
+                # 初始化已读列表（发送者已读）
+                msg['read_by'] = [msg_sender] if msg_sender else []
+                # 初始化未读列表（其他所有成员）
+                msg['unread_members'] = [m for m in group['members'] if m != msg_sender]
+
             # 将当前用户从未读列表移除，添加到已读列表
             if current_user in msg.get('unread_members', []):
                 msg['unread_members'].remove(current_user)
