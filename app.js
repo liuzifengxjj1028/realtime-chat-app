@@ -919,7 +919,8 @@ function removeMessageFromStore(timestamp) {
 
 // 接收撤回消息通知
 function handleMessageRecalled(data) {
-    removeMessageFromUI(data.timestamp);
+    console.log('收到撤回消息通知:', data);
+    console.log('当前聊天对象:', currentChatWith, '聊天类型:', currentChatType);
 
     // 从相应的消息存储中删除原消息，并添加撤回通知
     if (data.group_id) {
@@ -937,7 +938,7 @@ function handleMessageRecalled(data) {
             type: 'recall_notice',
             from: data.from,
             group_id: data.group_id,
-            timestamp: data.timestamp,
+            timestamp: Date.now(), // 使用新的时间戳
             content: `${data.from} 撤回了一条消息`,
             content_type: 'recall_notice'
         };
@@ -946,8 +947,9 @@ function handleMessageRecalled(data) {
             chatMessages.push(recallNotice);
         }
 
-        // 如果当前正在查看这个群聊，显示撤回通知
+        // 如果当前正在查看这个群聊，先移除原消息再显示撤回通知
         if (currentChatWith === data.group_id && currentChatType === 'group') {
+            removeMessageFromUI(data.timestamp);
             displayMessage(recallNotice);
         }
     } else {
@@ -965,7 +967,7 @@ function handleMessageRecalled(data) {
         const recallNotice = {
             type: 'recall_notice',
             from: data.from,
-            timestamp: data.timestamp,
+            timestamp: Date.now(), // 使用新的时间戳
             content: `${data.from} 撤回了一条消息`,
             content_type: 'recall_notice'
         };
@@ -974,8 +976,10 @@ function handleMessageRecalled(data) {
             chatMessages.push(recallNotice);
         }
 
-        // 如果当前正在查看这个私聊，显示撤回通知
+        // 如果当前正在查看这个私聊，先移除原消息再显示撤回通知
         if (currentChatWith === data.from && currentChatType === 'private') {
+            console.log('正在查看该用户的私聊，显示撤回通知');
+            removeMessageFromUI(data.timestamp);
             displayMessage(recallNotice);
         }
     }
