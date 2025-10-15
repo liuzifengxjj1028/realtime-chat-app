@@ -2149,6 +2149,7 @@ rerecordBtn.addEventListener('click', () => {
 // 发送语音消息
 sendVoiceBtn.addEventListener('click', async () => {
     console.log('发送语音按钮被点击');
+    console.log('currentUser:', currentUser);
     console.log('recordedAudioBlob:', recordedAudioBlob);
     console.log('currentChatType:', currentChatType);
     console.log('currentChatWith:', currentChatWith);
