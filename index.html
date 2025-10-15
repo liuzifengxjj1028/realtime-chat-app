@@ -523,17 +523,45 @@
                         <button id="cancel-quote" style="background: none; border: none; font-size: 20px; color: #999; cursor: pointer; padding: 0 8px;">×</button>
                     </div>
                 </div>
-                <div class="input-area">
-                    <label for="image-input">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                            <polyline points="21 15 16 10 5 21"></polyline>
-                        </svg>
-                    </label>
-                    <input type="file" id="image-input" accept="image/*">
-                    <input type="text" id="message-input" placeholder="输入消息..." disabled>
-                    <button id="send-btn" disabled>发送</button>
+                <!-- 机器人输入区域 (仅对怡总显示) -->
+                <div id="bot-input-area" style="display: none; padding: 16px; background: #f9f9f9; border-top: 2px solid #e0e0e0;">
+                    <div style="display: flex; gap: 16px; height: 180px;">
+                        <!-- 左侧：文本输入区域 -->
+                        <div style="flex: 1; display: flex; flex-direction: column;">
+                            <div style="font-size: 13px; font-weight: 500; color: #666; margin-bottom: 8px;">📋 粘贴或输入聊天记录</div>
+                            <textarea
+                                id="bot-text-input"
+                                placeholder="在这里粘贴或输入聊天记录...&#10;&#10;例如：&#10;张三 10:30&#10;大家好，今天讨论项目进度&#10;&#10;李四 10:32&#10;项目进展顺利..."
+                                style="flex: 1; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: 'Courier New', monospace; resize: none; line-height: 1.5;"
+                            ></textarea>
+                            <button id="submit-text-btn" style="margin-top: 8px; padding: 10px; background: #6c5ce7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">📤 提交文本总结</button>
+                        </div>
+                        <!-- 右侧：PDF上传区域 -->
+                        <div style="flex: 1; display: flex; flex-direction: column;">
+                            <div style="font-size: 13px; font-weight: 500; color: #666; margin-bottom: 8px;">📄 上传PDF文件</div>
+                            <div id="bot-pdf-drop-zone" style="flex: 1; border: 2px dashed #6c5ce7; border-radius: 8px; padding: 20px; text-align: center; background: white; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                                <input type="file" id="bot-pdf-input" accept=".pdf" style="display: none;">
+                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2" style="margin-bottom: 12px;">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <polyline points="14 2 14 8 20 8"></polyline>
+                                    <line x1="12" y1="18" x2="12" y2="12"></line>
+                                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                                </svg>
+                                <div style="font-size: 14px; font-weight: 500; color: #333; margin-bottom: 4px;">拖拽PDF文件到这里</div>
+                                <div style="font-size: 12px; color: #999;">或点击选择文件 (最大10MB)</div>
+                            </div>
+                            <div id="bot-pdf-file-info" style="display: none; margin-top: 8px; padding: 10px; background: white; border: 2px solid #6c5ce7; border-radius: 8px; font-size: 13px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between;">
+                                    <div style="flex: 1; overflow: hidden;">
+                                        <div id="bot-pdf-file-name" style="font-weight: 500; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                                        <div id="bot-pdf-file-size" style="font-size: 11px; color: #999; margin-top: 2px;"></div>
+                                    </div>
+                                    <button id="bot-remove-pdf-btn" style="background: none; border: none; font-size: 18px; color: #999; cursor: pointer; margin-left: 8px;">×</button>
+                                </div>
+                            </div>
+                            <button id="submit-pdf-btn" style="margin-top: 8px; padding: 10px; background: #5f27cd; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">📤 提交PDF总结</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -599,6 +627,75 @@
                 <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end;">
                     <button id="cancel-bot-settings-btn" style="padding: 10px 20px; background: #e0e0e0; color: #333; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">取消</button>
                     <button id="save-bot-settings-btn" style="padding: 10px 20px; background: #6c5ce7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 聊天记录粘贴/PDF上传弹窗 -->
+    <div class="modal" id="bot-upload-modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3>📋 提交聊天记录</h3>
+                <button class="close-btn" id="close-bot-upload-btn">&times;</button>
+            </div>
+            <div style="margin-top: 16px;">
+                <!-- Tab切换 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0;">
+                    <button id="paste-tab" class="upload-tab active" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid #6c5ce7; color: #6c5ce7; font-size: 15px; font-weight: 500; cursor: pointer;">粘贴文本</button>
+                    <button id="upload-tab" class="upload-tab" style="padding: 12px 24px; background: none; border: none; border-bottom: 3px solid transparent; color: #999; font-size: 15px; font-weight: 500; cursor: pointer;">上传PDF</button>
+                </div>
+
+                <!-- 粘贴文本区域 -->
+                <div id="paste-content" style="display: block;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        粘贴聊天记录：
+                    </label>
+                    <textarea
+                        id="chat-record-input"
+                        placeholder="将聊天记录粘贴到这里...&#10;&#10;例如：&#10;张三 10:30&#10;大家好，今天我们讨论项目进度&#10;&#10;李四 10:32&#10;项目目前进展顺利..."
+                        style="width: 100%; height: 300px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: 'Courier New', monospace; resize: vertical; line-height: 1.5;"
+                    ></textarea>
+                    <div style="margin-top: 12px; padding: 12px; background: #f0f7ff; border-left: 4px solid #6c5ce7; border-radius: 4px; font-size: 13px; color: #555;">
+                        💡 <strong>提示：</strong>直接粘贴聊天记录文本，怡总会根据你设置的Prompt进行总结分析。
+                    </div>
+                </div>
+
+                <!-- 上传PDF区域 -->
+                <div id="upload-content" style="display: none;">
+                    <div style="border: 2px dashed #6c5ce7; border-radius: 12px; padding: 40px; text-align: center; background: #f9f9ff; cursor: pointer;" id="pdf-drop-zone">
+                        <input type="file" id="pdf-input" accept=".pdf" style="display: none;">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2" style="margin: 0 auto 16px;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        <div style="font-size: 16px; font-weight: 500; color: #333; margin-bottom: 8px;">点击或拖拽PDF文件到这里</div>
+                        <div style="font-size: 13px; color: #999;">支持PDF格式，最大10MB</div>
+                    </div>
+                    <div id="pdf-file-info" style="display: none; margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 8px; font-size: 14px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <div style="flex: 1;">
+                                <div id="pdf-file-name" style="font-weight: 500; color: #333;"></div>
+                                <div id="pdf-file-size" style="font-size: 12px; color: #999; margin-top: 2px;"></div>
+                            </div>
+                            <button id="remove-pdf-btn" style="background: none; border: none; font-size: 20px; color: #999; cursor: pointer;">×</button>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; font-size: 13px; color: #856404;">
+                        ⚠️ <strong>注意：</strong>PDF文本提取功能需要服务器端支持，当前版本会提取PDF中的文本内容进行分析。
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="cancel-bot-upload-btn" style="padding: 10px 24px; background: #e0e0e0; color: #333; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">取消</button>
+                    <button id="submit-bot-upload-btn" style="padding: 10px 24px; background: #6c5ce7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">📤 提交总结</button>
                 </div>
             </div>
         </div>

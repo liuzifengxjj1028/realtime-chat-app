@@ -66,6 +66,20 @@ const cancelBotSettingsBtn = document.getElementById('cancel-bot-settings-btn');
 const saveBotSettingsBtn = document.getElementById('save-bot-settings-btn');
 const botPromptInput = document.getElementById('bot-prompt-input');
 
+// 机器人输入区域相关元素
+const botInputArea = document.getElementById('bot-input-area');
+const botTextInput = document.getElementById('bot-text-input');
+const submitTextBtn = document.getElementById('submit-text-btn');
+const botPdfInput = document.getElementById('bot-pdf-input');
+const botPdfDropZone = document.getElementById('bot-pdf-drop-zone');
+const botPdfFileInfo = document.getElementById('bot-pdf-file-info');
+const botPdfFileName = document.getElementById('bot-pdf-file-name');
+const botPdfFileSize = document.getElementById('bot-pdf-file-size');
+const botRemovePdfBtn = document.getElementById('bot-remove-pdf-btn');
+const submitPdfBtn = document.getElementById('submit-pdf-btn');
+
+let selectedBotPdfFile = null;
+
 // 连接 WebSocket
 function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -258,12 +272,14 @@ function selectContact(username) {
     currentChatType = 'user';
     chatWithName.textContent = username;
 
-    // 检查是否是机器人用户，显示/隐藏设置按钮
+    // 检查是否是机器人用户，显示/隐藏相关按钮和输入区域
     const contactInfo = contacts.get(username);
     if (contactInfo && contactInfo.isBot) {
         botSettingsBtn.style.display = 'block';
+        botInputArea.style.display = 'block';
     } else {
         botSettingsBtn.style.display = 'none';
+        botInputArea.style.display = 'none';
     }
 
     // 更新联系人列表样式
@@ -1246,3 +1262,142 @@ window.addEventListener('load', () => {
         nicknameInput.placeholder = '请输入你的昵称';
     }
 });
+
+// ============ 机器人输入区域功能 ============
+
+// 提交文本按钮
+submitTextBtn.addEventListener('click', () => {
+    const content = botTextInput.value.trim();
+    if (!content) {
+        alert('请输入或粘贴聊天记录！');
+        return;
+    }
+
+    // 发送给怡总
+    sendMessage(content);
+
+    // 清空输入框
+    botTextInput.value = '';
+});
+
+// PDF上传区域点击
+botPdfDropZone.addEventListener('click', () => {
+    botPdfInput.click();
+});
+
+// PDF文件选择
+botPdfInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        handleBotPdfFile(file);
+    }
+});
+
+// PDF拖拽功能
+botPdfDropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    botPdfDropZone.style.background = '#f0f0ff';
+});
+
+botPdfDropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    botPdfDropZone.style.background = 'white';
+});
+
+botPdfDropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    botPdfDropZone.style.background = 'white';
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+        handleBotPdfFile(file);
+    } else {
+        alert('请上传PDF文件！');
+    }
+});
+
+// 处理PDF文件
+function handleBotPdfFile(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        alert('文件大小不能超过10MB！');
+        return;
+    }
+
+    selectedBotPdfFile = file;
+    botPdfFileName.textContent = file.name;
+    botPdfFileSize.textContent = formatFileSize(file.size);
+    botPdfFileInfo.style.display = 'block';
+    botPdfDropZone.style.display = 'none';
+}
+
+// 移除PDF文件
+botRemovePdfBtn.addEventListener('click', () => {
+    selectedBotPdfFile = null;
+    botPdfInput.value = '';
+    botPdfFileInfo.style.display = 'none';
+    botPdfDropZone.style.display = 'flex';
+});
+
+// 格式化文件大小
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+}
+
+// 提交PDF按钮
+submitPdfBtn.addEventListener('click', async () => {
+    if (!selectedBotPdfFile) {
+        alert('请选择PDF文件！');
+        return;
+    }
+
+    try {
+        submitPdfBtn.disabled = true;
+        submitPdfBtn.textContent = '📤 处理中...';
+
+        const content = await extractPdfText(selectedBotPdfFile);
+        if (!content) {
+            alert('PDF文件内容为空或无法读取！');
+            submitPdfBtn.disabled = false;
+            submitPdfBtn.textContent = '📤 提交PDF总结';
+            return;
+        }
+
+        // 发送给怡总
+        sendMessage(content);
+
+        // 清空PDF
+        selectedBotPdfFile = null;
+        botPdfInput.value = '';
+        botPdfFileInfo.style.display = 'none';
+        botPdfDropZone.style.display = 'flex';
+
+        submitPdfBtn.disabled = false;
+        submitPdfBtn.textContent = '📤 提交PDF总结';
+    } catch (error) {
+        alert('PDF文件读取失败：' + error.message);
+        submitPdfBtn.disabled = false;
+        submitPdfBtn.textContent = '📤 提交PDF总结';
+    }
+});
+
+// 提取PDF文本（简化版本，实际需要pdf.js库）
+async function extractPdfText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = async function(e) {
+            try {
+                // 这里需要使用pdf.js库来解析PDF
+                // 暂时返回提示信息
+                const fileName = file.name;
+                resolve(`[PDF文件: ${fileName}]\n\n提示：完整的PDF文本提取功能需要pdf.js库支持。当前版本请使用左侧文本框功能，或者将PDF内容复制粘贴到文本框中。`);
+            } catch (error) {
+                reject(error);
+            }
+        };
+
+        reader.onerror = () => reject(new Error('文件读取失败'));
+        reader.readAsArrayBuffer(file);
+    });
+}

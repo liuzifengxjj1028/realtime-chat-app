@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>怡总 - AI聊天记录总结</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            min-height: 600px;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 30px;
+            height: 500px;
+        }
+
+        .text-section, .pdf-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .text-input {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 15px;
+            font-family: 'Courier New', monospace;
+            resize: none;
+            line-height: 1.6;
+            transition: border-color 0.3s;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #6c5ce7;
+        }
+
+        .pdf-drop-zone {
+            flex: 1;
+            border: 3px dashed #6c5ce7;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f9f9ff;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .pdf-drop-zone:hover {
+            background: #f0f0ff;
+            border-color: #5f27cd;
+        }
+
+        .pdf-drop-zone.dragover {
+            background: #e8e8ff;
+            border-color: #5f27cd;
+            transform: scale(1.02);
+        }
+
+        .pdf-icon {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+        }
+
+        .pdf-text {
+            font-size: 18px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .pdf-hint {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .pdf-file-info {
+            display: none;
+            flex: 1;
+            padding: 20px;
+            background: #f9f9ff;
+            border: 2px solid #6c5ce7;
+            border-radius: 12px;
+        }
+
+        .pdf-file-info.show {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .file-details {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .file-icon {
+            width: 48px;
+            height: 48px;
+            flex-shrink: 0;
+        }
+
+        .file-text {
+            flex: 1;
+        }
+
+        .file-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+
+        .file-size {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 8px;
+            transition: color 0.3s;
+        }
+
+        .remove-file-btn:hover {
+            color: #e74c3c;
+        }
+
+        .submit-btn {
+            margin-top: 20px;
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #6c5ce7 0%, #5f27cd 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(108, 92, 231, 0.3);
+        }
+
+        .submit-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .result-section {
+            margin-top: 40px;
+            padding: 30px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            border-left: 4px solid #6c5ce7;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 16px;
+        }
+
+        .result-content {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #555;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6c5ce7;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .settings-btn {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            padding: 12px 24px;
+            background: white;
+            color: #6c5ce7;
+            border: 2px solid white;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s;
+        }
+
+        .settings-btn:hover {
+            background: #6c5ce7;
+            color: white;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 24px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .modal-textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .modal-textarea:focus {
+            outline: none;
+            border-color: #6c5ce7;
+        }
+
+        .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-btn.cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .modal-btn.save {
+            background: #6c5ce7;
+            color: white;
+        }
+
+        .modal-btn:hover {
+            opacity: 0.8;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <button class="settings-btn" id="settings-btn">⚙️ 设置Prompt</button>
+
+    <div class="container">
+        <div class="header">
+            <h1>🤖 怡总</h1>
+            <p>AI智能聊天记录总结助手</p>
+        </div>
+
+        <div class="main-content">
+            <div class="input-section">
+                <!-- 左侧：文本输入 -->
+                <div class="text-section">
+                    <div class="section-title">
+                        📋 粘贴或输入聊天记录
+                    </div>
+                    <textarea
+                        class="text-input"
+                        id="text-input"
+                        placeholder="在这里粘贴或输入聊天记录...
+
+例如：
+张三 10:30
+大家好，今天我们讨论项目进度
+
+李四 10:32
+项目目前进展顺利，预计下周完成
+
+王五 10:35
+我这边测试发现了几个问题..."
+                    ></textarea>
+                    <button class="submit-btn" id="submit-text-btn">📤 提交文本总结</button>
+                </div>
+
+                <!-- 右侧：PDF上传 -->
+                <div class="pdf-section">
+                    <div class="section-title">
+                        📄 上传PDF文件
+                    </div>
+                    <div class="pdf-drop-zone" id="pdf-drop-zone">
+                        <input type="file" id="pdf-input" accept=".pdf">
+                        <svg class="pdf-icon" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="12" y1="18" x2="12" y2="12"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        <div class="pdf-text">拖拽PDF文件到这里</div>
+                        <div class="pdf-hint">或点击选择文件（最大10MB）</div>
+                    </div>
+                    <div class="pdf-file-info" id="pdf-file-info">
+                        <div class="file-details">
+                            <svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="#6c5ce7" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <div class="file-text">
+                                <div class="file-name" id="file-name"></div>
+                                <div class="file-size" id="file-size"></div>
+                            </div>
+                            <button class="remove-file-btn" id="remove-file-btn">×</button>
+                        </div>
+                    </div>
+                    <button class="submit-btn" id="submit-pdf-btn">📤 提交PDF总结</button>
+                </div>
+            </div>
+
+            <!-- 结果展示区域 -->
+            <div class="result-section" id="result-section">
+                <div class="result-title">📊 总结结果</div>
+                <div class="result-content" id="result-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置Modal -->
+    <div class="modal" id="settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">⚙️ 设置总结Prompt</div>
+            <textarea
+                class="modal-textarea"
+                id="prompt-textarea"
+                placeholder="请输入自定义的总结Prompt...
+
+例如：请用3个要点总结会议内容，突出行动项和责任人。"
+            ></textarea>
+            <div style="margin-top: 12px; padding: 12px; background: #f0f7ff; border-radius: 8px; font-size: 13px; color: #555;">
+                💡 <strong>提示：</strong>这个Prompt将用于指导AI如何总结你的聊天记录。
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" id="cancel-settings-btn">取消</button>
+                <button class="modal-btn save" id="save-settings-btn">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM元素
+        const textInput = document.getElementById('text-input');
+        const submitTextBtn = document.getElementById('submit-text-btn');
+        const pdfInput = document.getElementById('pdf-input');
+        const pdfDropZone = document.getElementById('pdf-drop-zone');
+        const pdfFileInfo = document.getElementById('pdf-file-info');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+        const submitPdfBtn = document.getElementById('submit-pdf-btn');
+        const resultSection = document.getElementById('result-section');
+        const resultContent = document.getElementById('result-content');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const promptTextarea = document.getElementById('prompt-textarea');
+        const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+        let selectedFile = null;
+        let ws = null;
+        const BOT_USERNAME = '怡总';
+
+        // WebSocket连接
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('WebSocket已连接');
+                // 自动注册为机器人用户
+                ws.send(JSON.stringify({
+                    type: 'register',
+                    username: BOT_USERNAME,
+                    userId: Date.now().toString()
+                }));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'new_message' && data.from === BOT_USERNAME) {
+                    // 显示结果
+                    resultContent.textContent = data.content;
+                    resultSection.classList.add('show');
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket已断开');
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        // 初始化
+        connectWebSocket();
+
+        // 加载保存的Prompt
+        const savedPrompt = localStorage.getItem('bot_prompt') || '请总结以下聊天记录的主要内容和关键信息。';
+
+        // 提交文本
+        submitTextBtn.addEventListener('click', () => {
+            const content = textInput.value.trim();
+            if (!content) {
+                alert('请输入或粘贴聊天记录！');
+                return;
+            }
+
+            sendToBot(content);
+        });
+
+        // PDF上传
+        pdfDropZone.addEventListener('click', () => {
+            pdfInput.click();
+        });
+
+        pdfInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        // 拖拽功能
+        pdfDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.add('dragover');
+        });
+
+        pdfDropZone.addEventListener('dragleave', () => {
+            pdfDropZone.classList.remove('dragover');
+        });
+
+        pdfDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pdfDropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'application/pdf') {
+                handleFile(file);
+            } else {
+                alert('请上传PDF文件！');
+            }
+        });
+
+        function handleFile(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert('文件大小不能超过10MB！');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            pdfDropZone.style.display = 'none';
+            pdfFileInfo.classList.add('show');
+        }
+
+        removeFileBtn.addEventListener('click', () => {
+            selectedFile = null;
+            pdfInput.value = '';
+            pdfFileInfo.classList.remove('show');
+            pdfDropZone.style.display = 'flex';
+        });
+
+        submitPdfBtn.addEventListener('click', async () => {
+            if (!selectedFile) {
+                alert('请选择PDF文件！');
+                return;
+            }
+
+            submitPdfBtn.disabled = true;
+            submitPdfBtn.textContent = '📤 处理中...';
+
+            try {
+                const content = `[PDF文件: ${selectedFile.name}]\n\n提示：完整的PDF文本提取功能需要pdf.js库支持。当前版本请使用左侧文本框功能，或者将PDF内容复制粘贴到文本框中。`;
+                await sendToBot(content);
+
+                // 清空
+                selectedFile = null;
+                pdfInput.value = '';
+                pdfFileInfo.classList.remove('show');
+                pdfDropZone.style.display = 'flex';
+            } finally {
+                submitPdfBtn.disabled = false;
+                submitPdfBtn.textContent = '📤 提交PDF总结';
+            }
+        });
+
+        function sendToBot(content) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('WebSocket未连接，请稍后再试');
+                return;
+            }
+
+            // 隐藏之前的结果
+            resultSection.classList.remove('show');
+
+            // 显示加载状态
+            resultContent.innerHTML = '<div class="loading"><div class="loading-spinner"></div><div>AI正在分析中...</div></div>';
+            resultSection.classList.add('show');
+
+            ws.send(JSON.stringify({
+                type: 'send_message',
+                to: BOT_USERNAME,
+                content: content,
+                content_type: 'text',
+                timestamp: Date.now()
+            }));
+
+            // 清空输入框
+            textInput.value = '';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // 设置功能
+        settingsBtn.addEventListener('click', () => {
+            promptTextarea.value = savedPrompt;
+            settingsModal.classList.add('show');
+        });
+
+        cancelSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('show');
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            const newPrompt = promptTextarea.value.trim();
+            if (newPrompt) {
+                localStorage.setItem('bot_prompt', newPrompt);
+
+                // 发送到服务器
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'send_message',
+                        to: BOT_USERNAME,
+                        content: `/setprompt ${newPrompt}`,
+                        content_type: 'text',
+                        timestamp: Date.now()
+                    }));
+                }
+
+                settingsModal.classList.remove('show');
+                alert('✅ Prompt设置已保存！');
+            }
+        });
+
+        // 点击modal背景关闭
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.remove('show');
+            }
+        });
+    </script>
+</body>
+</html>
