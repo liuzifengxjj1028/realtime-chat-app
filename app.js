@@ -86,6 +86,60 @@ console.log('botSubmitBtn元素:', botSubmitBtn);
 
 let selectedBotPdfFile = null;
 
+// 通知权限状态
+let notificationEnabled = false;
+
+// 请求通知权限
+function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.log('此浏览器不支持桌面通知');
+        return;
+    }
+
+    if (Notification.permission === 'granted') {
+        notificationEnabled = true;
+    } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+                notificationEnabled = true;
+                console.log('通知权限已授予');
+            }
+        });
+    }
+}
+
+// 显示桌面通知
+function showNotification(title, body, icon = null) {
+    if (!notificationEnabled || Notification.permission !== 'granted') {
+        return;
+    }
+
+    // 如果当前标签页是激活状态，不显示通知
+    if (document.hasFocus()) {
+        return;
+    }
+
+    const notification = new Notification(title, {
+        body: body,
+        icon: icon || '/icon.png', // 可以添加应用图标
+        badge: '/badge.png',
+        tag: 'chat-message', // 相同tag的通知会替换而不是堆叠
+        requireInteraction: false,
+        silent: false
+    });
+
+    // 点击通知时聚焦到窗口
+    notification.onclick = function() {
+        window.focus();
+        notification.close();
+    };
+
+    // 5秒后自动关闭
+    setTimeout(() => {
+        notification.close();
+    }, 5000);
+}
+
 // 连接 WebSocket
 function connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -170,6 +224,9 @@ function onRegisterSuccess(data) {
     currentUserName.textContent = currentUser;
     loginScreen.style.display = 'none';
     chatScreen.style.display = 'block';
+
+    // 请求通知权限
+    requestNotificationPermission();
 
     // 更新用户列表（包含机器人标记）
     updateContactsList(data.users, data.bots || []);
@@ -471,6 +528,10 @@ function receiveMessage(data) {
     if (currentChatWith === data.from) {
         displayMessage(data);
         sendReadReceipt(data.from);
+    } else {
+        // 如果不是当前聊天窗口，显示桌面通知
+        const messagePreview = data.content_type === 'image' ? '发送了一张图片' : data.content;
+        showNotification(`${data.from} 发来新消息`, messagePreview);
     }
 }
 
@@ -1127,6 +1188,12 @@ function receiveGroupMessage(data) {
         displayMessage(data);
         // 发送已读回执
         sendGroupMessageReadReceipt(data.group_id, data.timestamp);
+    } else {
+        // 如果不是当前群聊窗口，显示桌面通知
+        const group = groups.get(data.group_id);
+        const groupName = group ? group.name : data.group_id;
+        const messagePreview = data.content_type === 'image' ? '发送了一张图片' : data.content;
+        showNotification(`${data.from}@${groupName}`, messagePreview);
     }
 }
 
