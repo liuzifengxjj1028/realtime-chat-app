@@ -2141,12 +2141,21 @@ rerecordBtn.addEventListener('click', () => {
 
 // 发送语音消息
 sendVoiceBtn.addEventListener('click', async () => {
-    if (!recordedAudioBlob) return;
+    console.log('发送语音按钮被点击');
+    console.log('recordedAudioBlob:', recordedAudioBlob);
+    console.log('currentChatType:', currentChatType);
+    console.log('currentChatWith:', currentChatWith);
+
+    if (!recordedAudioBlob) {
+        console.error('没有录制的音频数据');
+        return;
+    }
 
     try {
         // 转换为base64
         const reader = new FileReader();
         reader.onloadend = () => {
+            console.log('音频已转换为base64');
             const base64Audio = reader.result.split(',')[1];
             const duration = parseInt(previewDuration.textContent.split(':')[0]) * 60 +
                            parseInt(previewDuration.textContent.split(':')[1]);
@@ -2165,6 +2174,11 @@ sendVoiceBtn.addEventListener('click', async () => {
                     timestamp: Date.now()
                 };
                 chatKey = currentChatWith;
+
+                // 确保messages Map中有这个群的数组
+                if (!messages.has(chatKey)) {
+                    messages.set(chatKey, []);
+                }
 
                 messages.get(chatKey).push({
                     ...message,
@@ -2187,10 +2201,14 @@ sendVoiceBtn.addEventListener('click', async () => {
             }
 
             // 发送到服务器
+            console.log('准备发送消息到服务器:', message);
             ws.send(JSON.stringify(message));
+            console.log('消息已发送到服务器');
 
             // 显示语音消息
+            console.log('准备显示语音消息');
             displayMessage({...message, from: currentUser});
+            console.log('语音消息已显示');
 
             // 清理并恢复界面
             if (previewAudio) {
