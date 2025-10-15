@@ -172,6 +172,8 @@ async def call_llm_api(prompt, user_content):
     """调用LLM API进行总结 - 支持Claude API"""
     api_key = os.environ.get('ANTHROPIC_API_KEY', '')
 
+    print(f'[DEBUG] API密钥状态: {"已配置" if api_key else "未配置"} (长度: {len(api_key) if api_key else 0})')
+
     if not api_key:
         return "错误：未配置API密钥。请设置ANTHROPIC_API_KEY环境变量。"
 
