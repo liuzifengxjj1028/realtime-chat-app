@@ -182,6 +182,14 @@ function handleMessage(data) {
         case 'users_list':
             updateContactsList(data.users);
             break;
+        case 'history_message':
+            // 接收历史消息（不显示通知）
+            receiveHistoryMessage(data);
+            break;
+        case 'history_group_message':
+            // 接收群组历史消息
+            receiveHistoryGroupMessage(data);
+            break;
         case 'new_message':
             // 如果是机器人回复，显示在结果区域
             if (data.from === '怡总' && currentChatWith === '怡总') {
@@ -522,6 +530,28 @@ function sendImage(file) {
         displayMessage(messageWithStatus);
     };
     reader.readAsDataURL(file);
+}
+
+// 接收历史消息（登录时加载）
+function receiveHistoryMessage(data) {
+    const chatKey = getChatKey(currentUser, data.from) || getChatKey(currentUser, data.to);
+
+    if (!messages.has(chatKey)) {
+        messages.set(chatKey, []);
+    }
+    messages.get(chatKey).push(data);
+    // 历史消息不显示，只存储到内存
+}
+
+// 接收群组历史消息
+function receiveHistoryGroupMessage(data) {
+    const chatKey = data.group_id;
+
+    if (!messages.has(chatKey)) {
+        messages.set(chatKey, []);
+    }
+    messages.get(chatKey).push(data);
+    // 历史消息不显示，只存储到内存
 }
 
 // 接收消息

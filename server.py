@@ -241,6 +241,47 @@ async def handle_register(ws, data):
         'bots': [BOT_USERNAME]  # 标记哪些是机器人
     })
 
+    # 推送历史消息（所有与该用户相关的聊天记录）
+    history_count = 0
+    for chat_key, msgs in messages_store.items():
+        # 检查是否是与该用户相关的聊天
+        if username in chat_key.split('_'):
+            for msg in msgs:
+                await ws.send_json({
+                    'type': 'history_message',
+                    **msg
+                })
+                history_count += 1
+
+    if history_count > 0:
+        print(f'推送 {history_count} 条历史消息给 {username}')
+
+    # 推送群组列表和群消息历史
+    user_groups = []
+    for group_id, group_info in groups_store.items():
+        if username in group_info['members']:
+            user_groups.append({
+                'group_id': group_id,
+                'name': group_info['name'],
+                'members': group_info['members'],
+                'creator': group_info['creator']
+            })
+
+            # 推送该群的历史消息
+            if group_id in messages_store:
+                for msg in messages_store[group_id]:
+                    await ws.send_json({
+                        'type': 'history_group_message',
+                        **msg
+                    })
+
+    if user_groups:
+        await ws.send_json({
+            'type': 'group_list',
+            'groups': user_groups
+        })
+        print(f'推送 {len(user_groups)} 个群组给 {username}')
+
     # 推送离线消息（如果有）
     if username in offline_messages and offline_messages[username]:
         print(f'推送 {len(offline_messages[username])} 条离线消息给 {username}')
@@ -251,6 +292,7 @@ async def handle_register(ws, data):
             })
         # 清空已推送的离线消息
         offline_messages[username] = []
+        save_offline_messages()  # 保存更新
 
     # 通知其他用户有新用户上线
     await broadcast({
