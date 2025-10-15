@@ -9,6 +9,7 @@ let groups = new Map(); // 存储群组信息 {groupId: {name, members}}
 let messages = new Map(); // 存储每个对话的消息
 let quotedMessage = null; // 当前被引用的消息
 let currentReadDetailMessage = null; // 当前正在显示阅读详情的消息
+let unreadCounts = new Map(); // 存储每个联系人的未读消息数量 {username: count}
 
 // 用户ID管理
 function generateUserId() {
@@ -284,10 +285,15 @@ function addContactToList(username, isOnline = true, isBot = false) {
         opacity = isOnline ? '1' : '0.6';
     }
 
+    // 获取未读消息数量
+    const unreadCount = unreadCounts.get(username) || 0;
+    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+
     contactItem.innerHTML = `
         <div class="name">
             <span class="online-indicator" style="background-color: ${indicatorColor};"></span>
             ${username}
+            ${unreadBadge}
         </div>
         <div class="status">${statusText}</div>
     `;
@@ -357,6 +363,12 @@ function selectContact(username) {
     currentChatWith = username;
     currentChatType = 'user';
     chatWithName.textContent = username;
+
+    // 清除未读消息数量
+    if (unreadCounts.has(username)) {
+        unreadCounts.set(username, 0);
+        updateContactUnreadBadge(username);
+    }
 
     // 检查是否是机器人用户，显示/隐藏相关按钮和输入区域
     const contactInfo = contacts.get(username);
@@ -570,9 +582,41 @@ function receiveMessage(data) {
         displayMessage(data);
         sendReadReceipt(data.from);
     } else {
-        // 如果不是当前聊天窗口，显示桌面通知
+        // 如果不是当前聊天窗口，增加未读计数并显示桌面通知
+        const currentCount = unreadCounts.get(data.from) || 0;
+        unreadCounts.set(data.from, currentCount + 1);
+        updateContactUnreadBadge(data.from);
+
         const messagePreview = data.content_type === 'image' ? '发送了一张图片' : data.content;
         showNotification(`${data.from} 发来新消息`, messagePreview);
+    }
+}
+
+// 更新联系人或群组的未读标记
+function updateContactUnreadBadge(identifier) {
+    // 尝试查找联系人或群组
+    let contactItem = contactsList.querySelector(`[data-username="${identifier}"]`);
+    if (!contactItem) {
+        contactItem = contactsList.querySelector(`[data-group-id="${identifier}"]`);
+    }
+    if (!contactItem) return;
+
+    const nameDiv = contactItem.querySelector('.name');
+    if (!nameDiv) return;
+
+    // 移除旧的未读标记
+    const oldBadge = nameDiv.querySelector('.unread-badge');
+    if (oldBadge) {
+        oldBadge.remove();
+    }
+
+    // 添加新的未读标记
+    const unreadCount = unreadCounts.get(identifier) || 0;
+    if (unreadCount > 0) {
+        const badge = document.createElement('span');
+        badge.className = 'unread-badge';
+        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+        nameDiv.appendChild(badge);
     }
 }
 
@@ -1170,6 +1214,10 @@ function addGroupToList(groupId, groupName, members) {
     const existing = contactsList.querySelector(`[data-group-id="${groupId}"]`);
     if (existing) return;
 
+    // 获取未读消息数量
+    const unreadCount = unreadCounts.get(groupId) || 0;
+    const unreadBadge = unreadCount > 0 ? `<span class="unread-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+
     const groupItem = document.createElement('div');
     groupItem.className = 'contact-item';
     groupItem.dataset.groupId = groupId;
@@ -1177,6 +1225,7 @@ function addGroupToList(groupId, groupName, members) {
         <div class="name">
             <span class="group-indicator">群</span>
             ${groupName}
+            ${unreadBadge}
         </div>
         <div class="status">${members.length} 人</div>
     `;
@@ -1192,6 +1241,12 @@ function selectGroup(groupId, groupName) {
     currentChatWith = groupId;
     currentChatType = 'group';
     chatWithName.textContent = groupName + ' (群聊)';
+
+    // 清除未读消息数量
+    if (unreadCounts.has(groupId)) {
+        unreadCounts.set(groupId, 0);
+        updateContactUnreadBadge(groupId);
+    }
 
     // 群聊总是显示普通输入区域，隐藏机器人输入区域
     botSettingsBtn.style.display = 'none';
@@ -1230,7 +1285,11 @@ function receiveGroupMessage(data) {
         // 发送已读回执
         sendGroupMessageReadReceipt(data.group_id, data.timestamp);
     } else {
-        // 如果不是当前群聊窗口，显示桌面通知
+        // 如果不是当前群聊窗口，增加未读数量并显示桌面通知
+        const currentCount = unreadCounts.get(data.group_id) || 0;
+        unreadCounts.set(data.group_id, currentCount + 1);
+        updateContactUnreadBadge(data.group_id);
+
         const group = groups.get(data.group_id);
         const groupName = group ? group.name : data.group_id;
         const messagePreview = data.content_type === 'image' ? '发送了一张图片' : data.content;
