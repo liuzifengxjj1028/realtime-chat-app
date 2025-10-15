@@ -899,9 +899,14 @@ function recallMessage(timestamp) {
 
 // 从UI中删除消息
 function removeMessageFromUI(timestamp) {
+    console.log('尝试从UI删除消息, timestamp:', timestamp);
     const messageEl = messagesContainer.querySelector(`[data-timestamp="${timestamp}"]`);
+    console.log('找到的消息元素:', messageEl);
     if (messageEl) {
+        console.log('删除消息元素');
         messageEl.remove();
+    } else {
+        console.log('未找到要删除的消息元素');
     }
 }
 
