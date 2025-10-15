@@ -1272,8 +1272,9 @@ function onGroupCreated(data) {
 
 function updateGroupsList(groupsList) {
     groupsList.forEach(group => {
-        groups.set(group.id, group);
-        addGroupToList(group.id, group.name, group.members);
+        const groupId = group.group_id || group.id; // 兼容两种字段名
+        groups.set(groupId, {...group, id: groupId});
+        addGroupToList(groupId, group.name, group.members);
     });
 }
 
