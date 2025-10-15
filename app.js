@@ -2419,7 +2419,7 @@ function isMobileDevice() {
 // 侧边栏控制
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
-const backBtn = document.getElementById('back-btn');
+const menuBtn = document.getElementById('menu-btn');
 
 // 打开侧边栏
 function openSidebar() {
@@ -2444,9 +2444,9 @@ if (sidebarOverlay) {
     sidebarOverlay.addEventListener('click', closeSidebar);
 }
 
-// 返回按钮功能（移动端显示联系人列表）
-if (backBtn) {
-    backBtn.addEventListener('click', () => {
+// 菜单按钮功能（移动端打开通讯录）
+if (menuBtn) {
+    menuBtn.addEventListener('click', () => {
         if (isMobileDevice()) {
             openSidebar();
         }
@@ -2458,12 +2458,9 @@ const originalSelectContact = selectContact;
 selectContact = function(username) {
     originalSelectContact(username);
 
-    // 移动端：选择联系人后关闭侧边栏，显示返回按钮
+    // 移动端：选择联系人后关闭侧边栏
     if (isMobileDevice()) {
         closeSidebar();
-        if (backBtn) {
-            backBtn.style.display = 'inline-flex';
-        }
     }
 };
 
@@ -2472,34 +2469,31 @@ const originalSelectGroup = selectGroup;
 selectGroup = function(groupId, groupName) {
     originalSelectGroup(groupId, groupName);
 
-    // 移动端：选择群组后关闭侧边栏，显示返回按钮
+    // 移动端：选择群组后关闭侧边栏
     if (isMobileDevice()) {
         closeSidebar();
-        if (backBtn) {
-            backBtn.style.display = 'inline-flex';
-        }
     }
 };
 
 // 窗口大小变化时调整UI
 window.addEventListener('resize', () => {
     if (!isMobileDevice()) {
-        // 桌面模式：隐藏返回按钮，关闭侧边栏动画
-        if (backBtn) {
-            backBtn.style.display = 'none';
+        // 桌面模式：隐藏菜单按钮，关闭侧边栏动画
+        if (menuBtn) {
+            menuBtn.style.display = 'none';
         }
         closeSidebar();
     } else {
-        // 移动模式：如果有选中的聊天对象，显示返回按钮
-        if (currentChatWith && backBtn) {
-            backBtn.style.display = 'inline-flex';
+        // 移动模式：始终显示菜单按钮
+        if (menuBtn) {
+            menuBtn.style.display = 'inline-flex';
         }
     }
 });
 
-// 初始化时检查
-if (isMobileDevice() && currentChatWith && backBtn) {
-    backBtn.style.display = 'inline-flex';
+// 初始化时检查 - 移动端始终显示菜单按钮
+if (isMobileDevice() && menuBtn) {
+    menuBtn.style.display = 'inline-flex';
 }
 
 // 防止iPhone Safari的橡皮筋效果

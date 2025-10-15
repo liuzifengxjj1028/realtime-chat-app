@@ -959,21 +959,26 @@
                 flex: 1;
             }
 
-            /* 添加返回按钮 */
-            .back-btn {
+            /* 添加菜单按钮（汉堡图标） */
+            .menu-btn {
                 display: inline-flex !important;
                 align-items: center;
                 justify-content: center;
-                width: 32px;
-                height: 32px;
+                width: 40px;
+                height: 40px;
                 border: none;
                 background: rgba(255,255,255,0.2);
                 color: white;
                 border-radius: 8px;
                 cursor: pointer;
                 margin-right: 12px;
-                font-size: 18px;
                 padding: 0;
+                flex-shrink: 0;
+            }
+
+            .menu-btn svg {
+                width: 22px;
+                height: 22px;
             }
 
             #ai-summary-btn, #bot-settings-btn {
@@ -1120,7 +1125,7 @@
             /* 触摸反馈 */
             .contact-item:active, .group-item:active,
             .send-btn:active, .image-btn:active,
-            .create-group-btn:active, .back-btn:active {
+            .create-group-btn:active, .menu-btn:active {
                 opacity: 0.7;
             }
         }
@@ -1176,7 +1181,13 @@
             <!-- 聊天区域 -->
             <div class="chat-area">
                 <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
-                    <button class="back-btn" id="back-btn" style="display: none;">‹</button>
+                    <button class="menu-btn" id="menu-btn" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
                     <h3 id="chat-with-name">选择一个联系人开始聊天</h3>
                     <div style="display: flex; gap: 10px;">
                         <button id="ai-summary-btn" style="padding: 8px 16px; background: #07c160; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">🤖 AI聊天总结</button>
