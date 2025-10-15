@@ -267,20 +267,26 @@ async def handle_register(ws, data):
                 'creator': group_info['creator']
             })
 
-            # 推送该群的历史消息
-            if group_id in messages_store:
-                for msg in messages_store[group_id]:
-                    await ws.send_json({
-                        'type': 'history_group_message',
-                        **msg
-                    })
-
+    # 先推送群组列表，让客户端初始化群组
     if user_groups:
         await ws.send_json({
             'type': 'group_list',
             'groups': user_groups
         })
         print(f'推送 {len(user_groups)} 个群组给 {username}')
+
+    # 再推送群组历史消息
+    for group_id, group_info in groups_store.items():
+        if username in group_info['members']:
+            if group_id in messages_store:
+                group_msg_count = len(messages_store[group_id])
+                for msg in messages_store[group_id]:
+                    await ws.send_json({
+                        'type': 'history_group_message',
+                        **msg
+                    })
+                if group_msg_count > 0:
+                    print(f'推送 {group_msg_count} 条群组历史消息 (群组ID: {group_id}) 给 {username}')
 
     # 推送离线消息（如果有）
     if username in offline_messages and offline_messages[username]:
