@@ -500,8 +500,9 @@
 
             <!-- 聊天区域 -->
             <div class="chat-area">
-                <div class="chat-header">
+                <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h3 id="chat-with-name">选择一个联系人开始聊天</h3>
+                    <button id="bot-settings-btn" style="display: none; padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">⚙️ 设置Prompt</button>
                 </div>
                 <div class="messages-container" id="messages-container">
                     <div class="empty-state">
@@ -571,6 +572,33 @@
                 <div style="font-size: 14px; font-weight: 500; color: #333; margin-bottom: 8px;">未读 (<span id="unread-count">0</span>)</div>
                 <div id="unread-list" style="max-height: 150px; overflow-y: auto;">
                     <!-- 未读成员列表 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 机器人Prompt设置弹窗 -->
+    <div class="modal" id="bot-settings-modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>⚙️ 设置总结Prompt</h3>
+                <button class="close-btn" id="close-bot-settings-btn">&times;</button>
+            </div>
+            <div style="margin-top: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                    自定义Prompt：
+                </label>
+                <textarea
+                    id="bot-prompt-input"
+                    placeholder="例如：请用3个要点总结会议内容，突出行动项和责任人"
+                    style="width: 100%; height: 150px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;"
+                ></textarea>
+                <div style="margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; font-size: 13px; color: #666;">
+                    💡 <strong>提示：</strong>这个Prompt将用于总结你发送的聊天记录。你可以根据需要自定义总结的格式和重点。
+                </div>
+                <div style="margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="cancel-bot-settings-btn" style="padding: 10px 20px; background: #e0e0e0; color: #333; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">取消</button>
+                    <button id="save-bot-settings-btn" style="padding: 10px 20px; background: #6c5ce7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">保存</button>
                 </div>
             </div>
         </div>

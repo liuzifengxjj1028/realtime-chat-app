@@ -59,6 +59,12 @@ const readList = document.getElementById('read-list');
 const unreadList = document.getElementById('unread-list');
 const readCount = document.getElementById('read-count');
 const unreadCount = document.getElementById('unread-count');
+const botSettingsBtn = document.getElementById('bot-settings-btn');
+const botSettingsModal = document.getElementById('bot-settings-modal');
+const closeBotSettingsBtn = document.getElementById('close-bot-settings-btn');
+const cancelBotSettingsBtn = document.getElementById('cancel-bot-settings-btn');
+const saveBotSettingsBtn = document.getElementById('save-bot-settings-btn');
+const botPromptInput = document.getElementById('bot-prompt-input');
 
 // 连接 WebSocket
 function connectWebSocket() {
@@ -251,6 +257,14 @@ function selectContact(username) {
     currentChatWith = username;
     currentChatType = 'user';
     chatWithName.textContent = username;
+
+    // 检查是否是机器人用户，显示/隐藏设置按钮
+    const contactInfo = contacts.get(username);
+    if (contactInfo && contactInfo.isBot) {
+        botSettingsBtn.style.display = 'block';
+    } else {
+        botSettingsBtn.style.display = 'none';
+    }
 
     // 更新联系人列表样式
     document.querySelectorAll('.contact-item').forEach(item => {
@@ -852,6 +866,55 @@ closeReadDetailBtn.addEventListener('click', closeReadDetail);
 readDetailModal.addEventListener('click', (e) => {
     if (e.target === readDetailModal) {
         closeReadDetail();
+    }
+});
+
+// 机器人设置按钮事件
+botSettingsBtn.addEventListener('click', () => {
+    // 从localStorage加载已保存的prompt
+    const savedPrompt = localStorage.getItem('bot_prompt') || '请总结以下聊天记录的主要内容和关键信息。';
+    botPromptInput.value = savedPrompt;
+    botSettingsModal.style.display = 'flex';
+});
+
+closeBotSettingsBtn.addEventListener('click', () => {
+    botSettingsModal.style.display = 'none';
+});
+
+cancelBotSettingsBtn.addEventListener('click', () => {
+    botSettingsModal.style.display = 'none';
+});
+
+saveBotSettingsBtn.addEventListener('click', () => {
+    const newPrompt = botPromptInput.value.trim();
+    if (newPrompt) {
+        // 保存到localStorage
+        localStorage.setItem('bot_prompt', newPrompt);
+
+        // 发送设置命令给机器人
+        const message = {
+            type: 'send_message',
+            to: '怡总',
+            content: `/setprompt ${newPrompt}`,
+            content_type: 'text',
+            timestamp: Date.now()
+        };
+
+        ws.send(JSON.stringify(message));
+
+        // 关闭弹窗
+        botSettingsModal.style.display = 'none';
+
+        // 显示提示
+        alert('✅ Prompt设置已保存！');
+    } else {
+        alert('❌ Prompt不能为空');
+    }
+});
+
+botSettingsModal.addEventListener('click', (e) => {
+    if (e.target === botSettingsModal) {
+        botSettingsModal.style.display = 'none';
     }
 });
 
