@@ -139,41 +139,53 @@ function onRegisterSuccess(data) {
     loginScreen.style.display = 'none';
     chatScreen.style.display = 'block';
 
-    // 更新用户列表
-    updateContactsList(data.users);
+    // 更新用户列表（包含机器人标记）
+    updateContactsList(data.users, data.bots || []);
 }
 
 // 更新通讯录
-function updateContactsList(users) {
+function updateContactsList(users, bots = []) {
     // 不清空contacts，只更新在线状态
     // 先将所有现有联系人标记为离线
     contacts.forEach((value, username) => {
-        contacts.set(username, {online: false});
+        contacts.set(username, {online: false, isBot: value.isBot});
     });
 
     // 更新在线用户状态
     users.forEach(user => {
         if (user !== currentUser) {
-            contacts.set(user, {online: true});
+            const isBot = bots.includes(user);
+            contacts.set(user, {online: true, isBot: isBot});
         }
     });
 
     // 重新渲染列表
     contactsList.innerHTML = '';
     contacts.forEach((value, username) => {
-        addContactToList(username, value.online);
+        addContactToList(username, value.online, value.isBot);
     });
 }
 
 // 添加联系人到列表
-function addContactToList(username, isOnline = true) {
+function addContactToList(username, isOnline = true, isBot = false) {
     const contactItem = document.createElement('div');
     contactItem.className = 'contact-item';
     contactItem.dataset.username = username;
 
-    const statusText = isOnline ? '在线' : '离线';
-    const indicatorColor = isOnline ? '#07c160' : '#ccc';
-    const opacity = isOnline ? '1' : '0.6';
+    let statusText;
+    let indicatorColor;
+    let opacity;
+
+    if (isBot) {
+        // 机器人用户始终在线，显示特殊标识
+        statusText = '🤖 机器人';
+        indicatorColor = '#6c5ce7';  // 紫色
+        opacity = '1';
+    } else {
+        statusText = isOnline ? '在线' : '离线';
+        indicatorColor = isOnline ? '#07c160' : '#ccc';
+        opacity = isOnline ? '1' : '0.6';
+    }
 
     contactItem.innerHTML = `
         <div class="name">

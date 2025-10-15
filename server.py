@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from aiohttp import web
 import aiohttp_cors
+import aiohttp
 
 # 存储连接的用户
 connected_users = {}  # {username: websocket}
@@ -22,6 +23,10 @@ groups_store = {}  # {group_id: {name, members, creator}}
 group_counter = 0  # 群组ID计数器
 # 存储离线消息
 offline_messages = {}  # {username: [messages]}
+# 机器人用户
+BOT_USERNAME = '怡总'  # 聊天记录总结机器人
+# 存储用户的机器人配置
+bot_configs = {}  # {username: {prompt: str}}
 
 
 def get_chat_key(user1, user2):
@@ -130,11 +135,16 @@ async def handle_register(ws, data):
     if user_id:
         user_ids[username] = user_id
 
-    # 发送注册成功消息
+    # 发送注册成功消息（包含机器人用户）
+    all_users = list(connected_users.keys())
+    if BOT_USERNAME not in all_users:
+        all_users.append(BOT_USERNAME)
+
     await ws.send_json({
         'type': 'register_success',
         'username': username,
-        'users': list(connected_users.keys())
+        'users': all_users,
+        'bots': [BOT_USERNAME]  # 标记哪些是机器人
     })
 
     # 推送离线消息（如果有）
@@ -156,6 +166,98 @@ async def handle_register(ws, data):
 
     print(f'用户注册: {username}')
     print(f'当前在线用户: {list(connected_users.keys())}')
+
+
+async def call_llm_api(prompt, user_content):
+    """调用LLM API进行总结"""
+    # 使用OpenAI兼容的API（可以是任何兼容的服务，如OpenAI、Anthropic Claude等）
+    api_key = os.environ.get('OPENAI_API_KEY', '')
+    api_base = os.environ.get('OPENAI_API_BASE', 'https://api.openai.com/v1')
+
+    if not api_key:
+        return "错误：未配置API密钥。请设置OPENAI_API_KEY环境变量。"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f'{api_base}/chat/completions',
+                headers={
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                },
+                json={
+                    'model': os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo'),
+                    'messages': [
+                        {'role': 'system', 'content': prompt},
+                        {'role': 'user', 'content': user_content}
+                    ],
+                    'temperature': 0.7
+                },
+                timeout=aiohttp.ClientTimeout(total=60)
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    return result['choices'][0]['message']['content']
+                else:
+                    error_text = await response.text()
+                    return f"API调用失败 ({response.status}): {error_text}"
+    except asyncio.TimeoutError:
+        return "错误：API调用超时"
+    except Exception as e:
+        return f"错误：{str(e)}"
+
+
+async def handle_bot_message(from_user, content, content_type):
+    """处理发送给机器人的消息"""
+    # 获取用户的机器人配置
+    user_config = bot_configs.get(from_user, {})
+    user_prompt = user_config.get('prompt', '请总结以下聊天记录的主要内容和关键信息。')
+
+    # 检查是否是配置命令
+    if content.startswith('/setprompt '):
+        new_prompt = content[11:].strip()
+        if new_prompt:
+            bot_configs[from_user] = {'prompt': new_prompt}
+            return f"✅ Prompt已更新为：\n\n{new_prompt}\n\n现在发送聊天记录或PDF给我，我会使用这个prompt进行总结。"
+        else:
+            return "❌ Prompt不能为空"
+
+    # 检查是否是查看配置命令
+    if content == '/getprompt':
+        return f"当前Prompt：\n\n{user_prompt}\n\n使用 /setprompt <新prompt> 来修改"
+
+    # 检查是否是帮助命令
+    if content == '/help' or content == '帮助':
+        return """📖 怡总使用说明：
+
+1. **设置总结Prompt**：
+   /setprompt <你的prompt>
+
+2. **查看当前Prompt**：
+   /getprompt
+
+3. **总结聊天记录**：
+   直接粘贴聊天记录文本发送给我
+
+4. **上传PDF文件**：
+   发送PDF文件，我会提取内容并总结
+
+示例：
+/setprompt 请用3个要点总结会议内容，突出行动项
+"""
+
+    # 处理文本内容（聊天记录）
+    if content_type == 'text':
+        # 调用LLM API进行总结
+        summary = await call_llm_api(user_prompt, content)
+        return f"📊 总结结果：\n\n{summary}"
+
+    # 处理PDF文件
+    elif content_type == 'pdf':
+        # TODO: 实现PDF文件解析
+        return "PDF文件处理功能开发中..."
+
+    return "❌ 不支持的消息类型"
 
 
 async def handle_send_message(data, from_user):
@@ -189,8 +291,37 @@ async def handle_send_message(data, from_user):
 
     messages_store[chat_key].append(message)
 
+    # 如果是发送给机器人的消息，处理并回复
+    if to_user == BOT_USERNAME:
+        print(f'机器人消息: {from_user} -> {BOT_USERNAME} ({content_type})')
+
+        # 处理机器人消息
+        bot_response = await handle_bot_message(from_user, content, content_type)
+
+        # 发送机器人回复
+        bot_message = {
+            'from': BOT_USERNAME,
+            'to': from_user,
+            'content': bot_response,
+            'content_type': 'text',
+            'timestamp': int(datetime.now().timestamp() * 1000),
+            'read': False
+        }
+
+        messages_store[chat_key].append(bot_message)
+
+        if from_user in connected_users:
+            await connected_users[from_user].send_json({
+                'type': 'new_message',
+                **bot_message
+            })
+        else:
+            if from_user not in offline_messages:
+                offline_messages[from_user] = []
+            offline_messages[from_user].append(bot_message)
+
     # 转发消息给接收者（如果在线）或存储为离线消息
-    if to_user in connected_users:
+    elif to_user in connected_users:
         await connected_users[to_user].send_json({
             'type': 'new_message',
             **message
