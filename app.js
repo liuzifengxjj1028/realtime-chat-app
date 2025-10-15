@@ -8,6 +8,7 @@ let contacts = new Map();
 let groups = new Map(); // 存储群组信息 {groupId: {name, members}}
 let messages = new Map(); // 存储每个对话的消息
 let quotedMessage = null; // 当前被引用的消息
+let currentReadDetailMessage = null; // 当前正在显示阅读详情的消息
 
 // 用户ID管理
 function generateUserId() {
@@ -663,6 +664,7 @@ function scrollToQuotedMessage(timestamp) {
 
 // 显示阅读详情弹窗
 function showReadDetail(msg) {
+    currentReadDetailMessage = msg; // 保存当前显示的消息
     readList.innerHTML = '';
     unreadList.innerHTML = '';
 
@@ -703,6 +705,7 @@ function showReadDetail(msg) {
 // 关闭阅读详情弹窗
 function closeReadDetail() {
     readDetailModal.style.display = 'none';
+    currentReadDetailMessage = null; // 清除引用
 }
 
 // 发送群消息已读回执
@@ -1007,6 +1010,12 @@ function handleGroupMessageReadUpdate(data) {
                     }
                 }
             }
+
+            // 如果阅读详情模态框正在显示这条消息，刷新模态框
+            if (currentReadDetailMessage && currentReadDetailMessage.timestamp === data.timestamp) {
+                showReadDetail(msg); // 重新渲染模态框
+            }
+
             break;
         }
     }
