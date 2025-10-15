@@ -956,9 +956,26 @@ function markMessageAsRead(data) {
 // 格式化时间
 function formatTime(timestamp) {
     const date = new Date(timestamp);
+    const now = new Date();
+
+    // 判断是否为今天
+    const isToday = date.getFullYear() === now.getFullYear() &&
+                    date.getMonth() === now.getMonth() &&
+                    date.getDate() === now.getDate();
+
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+
+    if (isToday) {
+        // 今天只显示时间
+        return `${hours}:${minutes}`;
+    } else {
+        // 不是今天显示日期+时间
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
 }
 
 // 引用消息相关函数
