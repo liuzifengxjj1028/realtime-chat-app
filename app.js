@@ -389,7 +389,7 @@ function displayMessage(msg) {
         const senderName = document.createElement('div');
         senderName.className = 'message-sender';
         senderName.textContent = msg.from;
-        senderName.style.fontSize = '12px';
+        senderName.style.fontSize = '24px';
         senderName.style.color = '#666';
         senderName.style.marginBottom = '4px';
         messageDiv.appendChild(senderName);
