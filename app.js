@@ -993,8 +993,10 @@ function handleGroupMessageReadUpdate(data) {
     // 查找并更新消息的阅读状态
     for (let msg of chatMessages) {
         if (msg.timestamp === data.timestamp) {
+            console.log('✅ 找到消息，更新前:', {read_by: msg.read_by, unread_members: msg.unread_members});
             msg.read_by = data.read_by;
             msg.unread_members = data.unread_members;
+            console.log('✅ 更新后:', {read_by: msg.read_by, unread_members: msg.unread_members});
 
             // 如果正在查看这个群聊，更新UI显示
             if (currentChatWith === data.group_id && currentChatType === 'group') {
@@ -1016,8 +1018,15 @@ function handleGroupMessageReadUpdate(data) {
             }
 
             // 如果阅读详情模态框正在显示这条消息，刷新模态框
+            console.log('🔍 检查模态框刷新条件:', {
+                hasCurrentReadDetail: !!currentReadDetailMessage,
+                currentTimestamp: currentReadDetailMessage?.timestamp,
+                updateTimestamp: data.timestamp,
+                match: currentReadDetailMessage?.timestamp === data.timestamp
+            });
+
             if (currentReadDetailMessage && currentReadDetailMessage.timestamp === data.timestamp) {
-                console.log('🔄 刷新阅读详情模态框');
+                console.log('🔄 刷新阅读详情模态框, msg数据:', {read_by: msg.read_by, unread_members: msg.unread_members});
                 showReadDetail(msg); // 重新渲染模态框
             } else if (currentReadDetailMessage) {
                 console.log('❌ 时间戳不匹配', currentReadDetailMessage.timestamp, '!=', data.timestamp);
