@@ -145,29 +145,45 @@ function onRegisterSuccess(data) {
 
 // 更新通讯录
 function updateContactsList(users) {
-    contacts.clear();
-    contactsList.innerHTML = '';
+    // 不清空contacts，只更新在线状态
+    // 先将所有现有联系人标记为离线
+    contacts.forEach((value, username) => {
+        contacts.set(username, {online: false});
+    });
 
+    // 更新在线用户状态
     users.forEach(user => {
         if (user !== currentUser) {
-            contacts.set(user, true);
-            addContactToList(user);
+            contacts.set(user, {online: true});
         }
+    });
+
+    // 重新渲染列表
+    contactsList.innerHTML = '';
+    contacts.forEach((value, username) => {
+        addContactToList(username, value.online);
     });
 }
 
 // 添加联系人到列表
-function addContactToList(username) {
+function addContactToList(username, isOnline = true) {
     const contactItem = document.createElement('div');
     contactItem.className = 'contact-item';
     contactItem.dataset.username = username;
+
+    const statusText = isOnline ? '在线' : '离线';
+    const indicatorColor = isOnline ? '#07c160' : '#ccc';
+    const opacity = isOnline ? '1' : '0.6';
+
     contactItem.innerHTML = `
         <div class="name">
-            <span class="online-indicator"></span>
+            <span class="online-indicator" style="background-color: ${indicatorColor};"></span>
             ${username}
         </div>
-        <div class="status">在线</div>
+        <div class="status">${statusText}</div>
     `;
+
+    contactItem.style.opacity = opacity;
 
     contactItem.addEventListener('click', () => {
         selectContact(username);
@@ -176,37 +192,45 @@ function addContactToList(username) {
     contactsList.appendChild(contactItem);
 }
 
-// 添加新上线的联系人
+// 添加新上线的联系人或更新在线状态
 function addContact(username) {
-    if (username !== currentUser && !contacts.has(username)) {
-        contacts.set(username, true);
+    if (username === currentUser) return;
+
+    if (!contacts.has(username)) {
+        // 新联系人，添加到列表
+        contacts.set(username, {online: true});
         addContactToList(username);
+    } else {
+        // 已存在的联系人上线，更新状态
+        contacts.set(username, {online: true});
+        setContactOnlineStatus(username, true);
     }
 }
 
-// 移除下线的联系人
+// 标记联系人为离线（不删除）
 function removeContact(username) {
-    contacts.delete(username);
+    if (contacts.has(username)) {
+        contacts.set(username, {online: false});
+        setContactOnlineStatus(username, false);
+    }
+}
+
+// 设置联系人在线/离线状态
+function setContactOnlineStatus(username, isOnline) {
     const contactItem = contactsList.querySelector(`[data-username="${username}"]`);
     if (contactItem) {
-        contactItem.remove();
-    }
+        const statusDiv = contactItem.querySelector('.status');
+        const indicator = contactItem.querySelector('.online-indicator');
 
-    // 如果正在和这个人聊天，清空聊天窗口
-    if (currentChatWith === username) {
-        currentChatWith = null;
-        messagesContainer.innerHTML = `
-            <div class="empty-state">
-                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
-                <h3>用户已离线</h3>
-                <p>选择其他联系人继续聊天</p>
-            </div>
-        `;
-        messageInput.disabled = true;
-        sendBtn.disabled = true;
-        chatWithName.textContent = '选择一个联系人开始聊天';
+        if (isOnline) {
+            statusDiv.textContent = '在线';
+            indicator.style.backgroundColor = '#07c160';
+            contactItem.style.opacity = '1';
+        } else {
+            statusDiv.textContent = '离线';
+            indicator.style.backgroundColor = '#ccc';
+            contactItem.style.opacity = '0.6';
+        }
     }
 }
 

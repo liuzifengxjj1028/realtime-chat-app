@@ -20,6 +20,8 @@ messages_store = {}  # {chat_key: [messages]}
 # 存储群组
 groups_store = {}  # {group_id: {name, members, creator}}
 group_counter = 0  # 群组ID计数器
+# 存储离线消息
+offline_messages = {}  # {username: [messages]}
 
 
 def get_chat_key(user1, user2):
@@ -135,6 +137,17 @@ async def handle_register(ws, data):
         'users': list(connected_users.keys())
     })
 
+    # 推送离线消息（如果有）
+    if username in offline_messages and offline_messages[username]:
+        print(f'推送 {len(offline_messages[username])} 条离线消息给 {username}')
+        for msg in offline_messages[username]:
+            await ws.send_json({
+                'type': 'new_message',
+                **msg
+            })
+        # 清空已推送的离线消息
+        offline_messages[username] = []
+
     # 通知其他用户有新用户上线
     await broadcast({
         'type': 'user_online',
@@ -176,14 +189,19 @@ async def handle_send_message(data, from_user):
 
     messages_store[chat_key].append(message)
 
-    # 转发消息给接收者
+    # 转发消息给接收者（如果在线）或存储为离线消息
     if to_user in connected_users:
         await connected_users[to_user].send_json({
             'type': 'new_message',
             **message
         })
-
-    print(f'消息: {from_user} -> {to_user} ({content_type})')
+        print(f'消息: {from_user} -> {to_user} ({content_type}) [已送达]')
+    else:
+        # 接收者离线，存储为离线消息
+        if to_user not in offline_messages:
+            offline_messages[to_user] = []
+        offline_messages[to_user].append(message)
+        print(f'消息: {from_user} -> {to_user} ({content_type}) [离线存储]')
 
 
 async def handle_mark_as_read(data, current_user):
