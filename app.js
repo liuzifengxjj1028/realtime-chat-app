@@ -474,7 +474,7 @@ function displayMessage(msg) {
             console.log('✓ 满足条件，显示阅读状态');
             const readStatusDiv = document.createElement('span');
             readStatusDiv.className = 'read-status';
-            readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 11px; color: rgba(255,255,255,0.6); cursor: pointer;';
+            readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 13px; color: #ffffff; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 10px; cursor: pointer; font-weight: 500;';
 
             const readByCount = msg.read_by.length;
             const unreadCount = msg.unread_members.length;
