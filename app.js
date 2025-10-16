@@ -2822,12 +2822,12 @@ const rejectVideoBtn = document.getElementById('reject-video-btn');
 
 // 点击视频聊天按钮
 videoCallBtn.addEventListener('click', async () => {
-    if (!currentChatUser) {
+    if (!currentChatWith) {
         alert('请先选择一个联系人');
         return;
     }
 
-    videoCallTarget = currentChatUser;
+    videoCallTarget = currentChatWith;
     isVideoCaller = true;
 
     try {
