@@ -1455,7 +1455,7 @@ function selectGroup(groupId, groupName) {
     botSettingsBtn.style.display = 'none';
     botInputArea.style.display = 'none';
     inputArea.style.display = 'flex';
-    videoCallBtn.style.display = 'none'; // 群聊暂不支持视频聊天
+    videoCallBtn.style.display = 'block'; // 群聊支持多人视频聊天
 
     // 更新样式
     document.querySelectorAll('.contact-item').forEach(item => {
@@ -2804,15 +2804,17 @@ const iceServers = {
 
 // 视频聊天状态
 let localStream = null;
-let peerConnection = null;
-let videoCallTarget = null; // 当前视频通话的对象
+let peerConnections = new Map(); // 存储多个peer连接 {username: RTCPeerConnection}
+let videoCallTarget = null; // 当前视频通话的对象（用户名或群组ID）
+let videoCallType = null; // 'user' or 'group'
 let isVideoCaller = false; // 是否是发起方
+let groupVideoMembers = new Set(); // 群组视频成员列表
 
 // 获取DOM元素
 const videoCallBtn = document.getElementById('video-call-btn');
 const videoChatContainer = document.getElementById('video-chat-container');
 const localVideo = document.getElementById('local-video');
-const remoteVideo = document.getElementById('remote-video');
+const videoGrid = document.getElementById('video-grid');
 const endCallBtn = document.getElementById('end-call-btn');
 const videoCloseBtn = document.getElementById('video-close-btn');
 const toggleVideoBtn = document.getElementById('toggle-video-btn');
@@ -2830,6 +2832,7 @@ videoCallBtn.addEventListener('click', async () => {
     }
 
     videoCallTarget = currentChatWith;
+    videoCallType = currentChatType; // 'user' or 'group'
     isVideoCaller = true;
 
     try {
@@ -2841,14 +2844,24 @@ videoCallBtn.addEventListener('click', async () => {
 
         localVideo.srcObject = localStream;
 
-        // 发送视频邀请
-        ws.send(JSON.stringify({
-            type: 'video_invite',
-            from: currentUser,
-            to: videoCallTarget
-        }));
-
-        console.log('发送视频邀请给:', videoCallTarget);
+        // 根据类型发送邀请
+        if (videoCallType === 'group') {
+            // 群组视频：向群组广播邀请
+            ws.send(JSON.stringify({
+                type: 'group_video_invite',
+                from: currentUser,
+                group_id: videoCallTarget
+            }));
+            console.log('发送群组视频邀请:', videoCallTarget);
+        } else {
+            // 一对一视频
+            ws.send(JSON.stringify({
+                type: 'video_invite',
+                from: currentUser,
+                to: videoCallTarget
+            }));
+            console.log('发送视频邀请给:', videoCallTarget);
+        }
     } catch (error) {
         console.error('获取媒体设备失败:', error);
         alert('无法访问摄像头或麦克风，请检查权限设置');
@@ -3100,4 +3113,126 @@ function addSystemMessage(text) {
 
     messagesContainer.appendChild(messageDiv);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// ==================== 多人视频聊天辅助函数 ====================
+
+// 添加远程视频元素
+function addRemoteVideo(username, stream) {
+    // 检查是否已存在
+    let videoContainer = document.getElementById(`remote-${username}`);
+
+    if (!videoContainer) {
+        videoContainer = document.createElement('div');
+        videoContainer.className = 'video-item';
+        videoContainer.id = `remote-${username}`;
+
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsinline = true;
+        video.srcObject = stream;
+
+        const label = document.createElement('div');
+        label.className = 'video-label';
+        label.textContent = username;
+
+        videoContainer.appendChild(video);
+        videoContainer.appendChild(label);
+        videoGrid.appendChild(videoContainer);
+    } else {
+        // 更新已存在的视频流
+        const video = videoContainer.querySelector('video');
+        video.srcObject = stream;
+    }
+
+    updateVideoLayout();
+}
+
+// 移除远程视频元素
+function removeRemoteVideo(username) {
+    const videoContainer = document.getElementById(`remote-${username}`);
+    if (videoContainer) {
+        videoContainer.remove();
+        updateVideoLayout();
+    }
+}
+
+// 更新视频布局
+function updateVideoLayout() {
+    const participantCount = videoGrid.children.length;
+
+    // 如果只有1或2人（包括自己），使用单人模式布局
+    if (participantCount <= 2) {
+        videoGrid.classList.add('single-user');
+    } else {
+        videoGrid.classList.remove('single-user');
+    }
+}
+
+// 创建与特定用户的WebRTC连接
+async function createPeerConnectionForUser(username, isInitiator) {
+    const pc = new RTCPeerConnection(iceServers);
+
+    // 添加本地流到连接
+    localStream.getTracks().forEach(track => {
+        pc.addTrack(track, localStream);
+    });
+
+    // 监听远程流
+    pc.ontrack = (event) => {
+        console.log(`接收到来自 ${username} 的远程流`);
+        addRemoteVideo(username, event.streams[0]);
+    };
+
+    // 监听ICE候选
+    pc.onicecandidate = (event) => {
+        if (event.candidate) {
+            const message = {
+                type: 'ice_candidate',
+                from: currentUser,
+                to: username,
+                candidate: event.candidate
+            };
+
+            // 如果是群组通话，添加group_id
+            if (videoCallType === 'group') {
+                message.group_id = videoCallTarget;
+            }
+
+            ws.send(JSON.stringify(message));
+        }
+    };
+
+    // 监听连接状态
+    pc.oniceconnectionstatechange = () => {
+        console.log(`与 ${username} 的ICE连接状态: ${pc.iceConnectionState}`);
+        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+            removeRemoteVideo(username);
+            peerConnections.delete(username);
+        }
+    };
+
+    peerConnections.set(username, pc);
+
+    // 如果是发起方，创建offer
+    if (isInitiator) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const message = {
+            type: 'video_offer',
+            from: currentUser,
+            to: username,
+            offer: offer
+        };
+
+        // 如果是群组通话，添加group_id
+        if (videoCallType === 'group') {
+            message.group_id = videoCallTarget;
+        }
+
+        ws.send(JSON.stringify(message));
+    }
+
+    return pc;
 }
