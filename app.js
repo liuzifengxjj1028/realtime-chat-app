@@ -275,6 +275,9 @@ function handleMessage(data) {
         case 'group_video_end':
             handleGroupVideoEnd(data);
             break;
+        case 'group_video_members':
+            handleGroupVideoMembers(data);
+            break;
     }
 }
 
@@ -2975,17 +2978,32 @@ async function handleVideoAccept(data) {
 async function handleGroupVideoAccept(data) {
     console.log(`${data.from} 加入了群组视频通话`);
 
-    // 如果是发起方，显示视频界面
-    if (isVideoCaller && !videoChatContainer.classList.contains('active')) {
+    // 显示视频界面
+    if (!videoChatContainer.classList.contains('active')) {
         videoChatContainer.classList.add('active');
     }
 
     // 添加到群组成员列表
     groupVideoMembers.add(data.from);
 
-    // 与新成员建立连接
+    // 与新成员建立连接（已存在的成员需要主动发起连接）
     if (data.from !== currentUser) {
-        await createPeerConnectionForUser(data.from, isVideoCaller);
+        // 已经在通话中的成员与新成员建立连接，由已存在成员作为发起方
+        await createPeerConnectionForUser(data.from, true);
+    }
+}
+
+// 接收到群组当前成员列表
+async function handleGroupVideoMembers(data) {
+    console.log('收到群组视频成员列表:', data.members);
+
+    // 新加入的成员需要与所有已存在成员建立连接
+    for (const member of data.members) {
+        if (member !== currentUser && !peerConnections.has(member)) {
+            groupVideoMembers.add(member);
+            // 新成员作为接收方，等待已存在成员发起连接
+            // 这里不需要主动创建连接，等待对方的offer即可
+        }
     }
 }
 

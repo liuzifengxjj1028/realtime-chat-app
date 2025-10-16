@@ -839,6 +839,48 @@ async def handle_video_signal(data, current_user):
 
         group = groups_store[group_id]
 
+        # 初始化群组视频成员列表
+        if 'video_members' not in group:
+            group['video_members'] = set()
+
+        # 处理invite信号 - 发起人加入
+        if msg_type == 'group_video_invite':
+            group['video_members'].add(current_user)
+            print(f'群组视频invite: {current_user} 发起群 {group_id} 视频')
+
+        # 处理accept信号 - 需要返回当前成员列表
+        if msg_type == 'group_video_accept':
+            # 获取当前已在视频中的成员列表
+            current_members = list(group['video_members'])
+
+            # 将新成员加入列表
+            group['video_members'].add(current_user)
+
+            # 给新加入的成员发送当前成员列表
+            if current_user in connected_users:
+                await connected_users[current_user].send_json({
+                    'type': 'group_video_members',
+                    'group_id': group_id,
+                    'members': current_members
+                })
+
+            # 广播给群内其他在线成员
+            for member in group['members']:
+                if member != current_user and member in connected_users:
+                    await connected_users[member].send_json(data)
+
+            print(f'群组视频accept: {current_user} 加入群 {group_id}, 当前成员: {list(group["video_members"])}')
+            return
+
+        # 处理end信号 - 移除成员
+        if msg_type == 'group_video_end':
+            if current_user in group['video_members']:
+                group['video_members'].remove(current_user)
+
+            # 如果没人了，清空列表
+            if len(group['video_members']) == 0:
+                group['video_members'] = set()
+
         # 广播给群内所有在线成员（除了发送者）
         for member in group['members']:
             if member != current_user and member in connected_users:
