@@ -177,6 +177,112 @@
             transform: translateY(-1px);
         }
 
+        /* 天气预报区域 */
+        .weather-widget {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .weather-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .weather-icon-animated {
+            font-size: 48px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .weather-temp {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .weather-desc {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .weather-location {
+            font-size: 12px;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .weather-advice {
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-top: 12px;
+        }
+
+        .weather-advice-icon {
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        /* 雨滴动画 */
+        .rain-animation {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .raindrop {
+            position: absolute;
+            width: 2px;
+            height: 15px;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.6));
+            animation: rain-fall 1s linear infinite;
+        }
+
+        @keyframes rain-fall {
+            0% { transform: translateY(-20px); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(80px); opacity: 0; }
+        }
+
+        /* 雪花动画 */
+        .snowflake {
+            position: absolute;
+            color: white;
+            font-size: 20px;
+            animation: snow-fall 4s linear infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes snow-fall {
+            0% { transform: translateY(-20px) rotate(0deg); }
+            100% { transform: translateY(100px) rotate(360deg); }
+        }
+
+        /* 云朵动画 */
+        .cloud-animation {
+            position: relative;
+        }
+
+        @keyframes cloud-move {
+            0%, 100% { transform: translateX(0px); }
+            50% { transform: translateX(10px); }
+        }
+
         .contacts-list {
             flex: 1;
             overflow-y: auto;
@@ -1289,6 +1395,27 @@
                 <div class="sidebar-header">
                     <h2 id="current-user-name">用户</h2>
                     <p>在线用户</p>
+
+                    <!-- 天气预报区域 -->
+                    <div class="weather-widget" id="weather-widget">
+                        <div class="weather-main">
+                            <div>
+                                <div class="weather-icon-animated" id="weather-icon">🌤️</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="weather-temp" id="weather-temp">--°</div>
+                                <div class="weather-desc" id="weather-desc">加载中...</div>
+                            </div>
+                        </div>
+                        <div class="weather-location" id="weather-location">
+                            📍 获取位置中...
+                        </div>
+                        <div class="weather-advice" id="weather-advice">
+                            <span class="weather-advice-icon">👔</span>
+                            <span id="weather-advice-text">正在分析穿衣建议...</span>
+                        </div>
+                    </div>
+
                     <button class="create-group-btn" id="create-group-btn">+ 创建群聊</button>
                     <button class="create-group-btn" id="logout-btn" style="margin-top: 10px; background: rgba(255,255,255,0.15);">切换用户</button>
                 </div>

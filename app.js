@@ -2560,3 +2560,210 @@ if (messageInput && isMobileDevice()) {
 }
 
 console.log('移动端适配已启用:', isMobileDevice() ? '是' : '否');
+
+// ========== 天气预报功能 ==========
+
+// 天气图标映射
+const weatherIcons = {
+    '晴': '☀️',
+    '多云': '⛅',
+    '阴': '☁️',
+    '雨': '🌧️',
+    '小雨': '🌦️',
+    '中雨': '🌧️',
+    '大雨': '⛈️',
+    '雪': '❄️',
+    '小雪': '🌨️',
+    '中雪': '❄️',
+    '大雪': '🌨️',
+    '雾': '🌫️',
+    '霾': '😷'
+};
+
+// 穿衣建议逻辑
+function getClothingAdvice(temp, weather) {
+    let advice = '';
+    let icon = '👔';
+
+    if (temp >= 28) {
+        advice = '天气炎热，建议穿短袖、短裤等清凉衣物，注意防晒';
+        icon = '👕';
+    } else if (temp >= 20) {
+        advice = '天气舒适，建议穿薄外套、长袖衬衫等';
+        icon = '👔';
+    } else if (temp >= 15) {
+        advice = '天气微凉，建议穿风衣、毛衣等保暖衣物';
+        icon = '🧥';
+    } else if (temp >= 10) {
+        advice = '天气较冷，建议穿厚外套、毛衣、长裤';
+        icon = '🧥';
+    } else {
+        advice = '天气寒冷，建议穿羽绒服、棉衣等厚重保暖衣物';
+        icon = '🧤';
+    }
+
+    // 根据天气补充建议
+    if (weather.includes('雨')) {
+        advice += '，记得带伞 ☔';
+    } else if (weather.includes('雪')) {
+        advice += '，路面可能湿滑，注意安全 ⚠️';
+    } else if (weather.includes('雾') || weather.includes('霾')) {
+        advice += '，建议戴口罩出行 😷';
+    }
+
+    return { advice, icon };
+}
+
+// 获取天气图标
+function getWeatherIcon(weather) {
+    for (const key in weatherIcons) {
+        if (weather.includes(key)) {
+            return weatherIcons[key];
+        }
+    }
+    return '🌤️'; // 默认图标
+}
+
+// 初始化天气功能
+async function initWeather() {
+    const weatherIcon = document.getElementById('weather-icon');
+    const weatherTemp = document.getElementById('weather-temp');
+    const weatherDesc = document.getElementById('weather-desc');
+    const weatherLocation = document.getElementById('weather-location');
+    const weatherAdviceText = document.getElementById('weather-advice-text');
+    const weatherAdviceIcon = document.querySelector('.weather-advice-icon');
+
+    // 使用浏览器地理定位API
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                console.log('获取到位置:', latitude, longitude);
+
+                try {
+                    // 调用后端天气API
+                    const response = await fetch(
+                        `/api/weather?lat=${latitude}&lon=${longitude}`
+                    );
+
+                    if (!response.ok) {
+                        throw new Error('天气API调用失败');
+                    }
+
+                    const data = await response.json();
+                    console.log('天气数据:', data);
+
+                    // 更新天气信息
+                    const temp = data.temp;
+                    const weather = data.description;
+                    const city = data.city;
+
+                    weatherTemp.textContent = `${temp}°`;
+                    weatherDesc.textContent = weather;
+                    weatherLocation.innerHTML = `📍 ${city}`;
+                    weatherIcon.textContent = getWeatherIcon(weather);
+
+                    // 获取穿衣建议
+                    const clothingAdvice = getClothingAdvice(temp, weather);
+                    weatherAdviceText.textContent = clothingAdvice.advice;
+                    weatherAdviceIcon.textContent = clothingAdvice.icon;
+
+                    // 添加天气动画效果
+                    if (weather.includes('雨')) {
+                        addRainAnimation();
+                    } else if (weather.includes('雪')) {
+                        addSnowAnimation();
+                    }
+
+                } catch (error) {
+                    console.error('获取天气失败:', error);
+                    weatherDesc.textContent = '天气获取失败';
+                    weatherAdviceText.textContent = '无法获取穿衣建议';
+                }
+            },
+            (error) => {
+                console.error('定位失败:', error);
+                // 定位失败时使用默认位置（北京）
+                useDefaultWeather();
+            }
+        );
+    } else {
+        console.log('浏览器不支持地理定位');
+        useDefaultWeather();
+    }
+}
+
+// 使用默认天气（定位失败时）
+async function useDefaultWeather() {
+    const weatherIcon = document.getElementById('weather-icon');
+    const weatherTemp = document.getElementById('weather-temp');
+    const weatherDesc = document.getElementById('weather-desc');
+    const weatherLocation = document.getElementById('weather-location');
+    const weatherAdviceText = document.getElementById('weather-advice-text');
+    const weatherAdviceIcon = document.querySelector('.weather-advice-icon');
+
+    try {
+        // 使用北京作为默认城市
+        const apiKey = '6bdeb85c8f5e8b54ce66476a0aa82ffb';
+        const response = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?q=Beijing&units=metric&lang=zh_cn&appid=${apiKey}`
+        );
+
+        const data = await response.json();
+
+        const temp = Math.round(data.main.temp);
+        const weather = data.weather[0].description;
+
+        weatherTemp.textContent = `${temp}°`;
+        weatherDesc.textContent = weather;
+        weatherLocation.innerHTML = `📍 北京（默认）`;
+        weatherIcon.textContent = getWeatherIcon(weather);
+
+        const clothingAdvice = getClothingAdvice(temp, weather);
+        weatherAdviceText.textContent = clothingAdvice.advice;
+        weatherAdviceIcon.textContent = clothingAdvice.icon;
+
+    } catch (error) {
+        console.error('获取默认天气失败:', error);
+        weatherTemp.textContent = '22°';
+        weatherDesc.textContent = '晴天';
+        weatherLocation.innerHTML = `📍 位置未知`;
+        weatherAdviceText.textContent = '天气舒适，适合外出';
+    }
+}
+
+// 添加雨滴动画
+function addRainAnimation() {
+    const widget = document.getElementById('weather-widget');
+    widget.classList.add('rain-animation');
+
+    // 创建多个雨滴
+    for (let i = 0; i < 10; i++) {
+        const raindrop = document.createElement('div');
+        raindrop.className = 'raindrop';
+        raindrop.style.left = `${Math.random() * 100}%`;
+        raindrop.style.animationDelay = `${Math.random() * 1}s`;
+        widget.appendChild(raindrop);
+    }
+}
+
+// 添加雪花动画
+function addSnowAnimation() {
+    const widget = document.getElementById('weather-widget');
+
+    // 创建多个雪花
+    for (let i = 0; i < 8; i++) {
+        const snowflake = document.createElement('div');
+        snowflake.className = 'snowflake';
+        snowflake.textContent = '❄';
+        snowflake.style.left = `${Math.random() * 100}%`;
+        snowflake.style.animationDelay = `${Math.random() * 4}s`;
+        widget.appendChild(snowflake);
+    }
+}
+
+// 在页面加载完成后初始化天气
+window.addEventListener('load', () => {
+    // 延迟1秒后获取天气，避免与其他初始化冲突
+    setTimeout(initWeather, 1000);
+});

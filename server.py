@@ -1029,10 +1029,59 @@ def create_app():
                 'error': str(e)
             }, status=500)
 
+    # 天气API处理器
+    async def weather_handler(request):
+        """获取天气信息"""
+        try:
+            # 从请求中获取经纬度
+            lat = request.query.get('lat')
+            lon = request.query.get('lon')
+
+            if not lat or not lon:
+                return web.json_response({
+                    'error': '缺少经纬度参数'
+                }, status=400)
+
+            # OpenWeatherMap API配置
+            weather_api_key = '547bca00ca205ddd4f903f8890d8b8e3'
+            weather_url = f'https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&units=metric&lang=zh_cn&appid={weather_api_key}'
+
+            print(f'🌤️ 获取天气信息: lat={lat}, lon={lon}')
+
+            # 调用OpenWeatherMap API
+            async with aiohttp.ClientSession() as session:
+                async with session.get(weather_url) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        print(f'❌ 天气API错误: {error_text}')
+                        return web.json_response({
+                            'error': f'天气API调用失败: {error_text}'
+                        }, status=500)
+
+                    data = await response.json()
+                    print(f'✅ 天气数据获取成功: {data.get("name")}')
+
+                    # 返回处理后的天气数据
+                    return web.json_response({
+                        'temp': round(data['main']['temp']),
+                        'description': data['weather'][0]['description'],
+                        'city': data['name'],
+                        'weather_main': data['weather'][0]['main']
+                    })
+
+        except Exception as e:
+            print(f'❌ 天气处理错误: {str(e)}')
+            import traceback
+            traceback.print_exc()
+            return web.json_response({
+                'error': str(e)
+            }, status=500)
+
     # 添加路由
     app.router.add_get('/', index_handler)
     app.router.add_get('/ws', websocket_handler)
     app.router.add_post('/api/summarize_chat', summarize_chat_handler)
+    app.router.add_get('/api/weather', weather_handler)
     app.router.add_get('/{filename}', static_handler)
 
     # 配置 CORS
