@@ -203,8 +203,8 @@ async def handle_message(ws, data, current_username):
     elif msg_type == 'mark_group_message_read':
         await handle_mark_group_message_read(data, current_username)
 
-    # 视频聊天信令
-    elif msg_type in ['video_invite', 'video_accept', 'video_reject', 'video_offer', 'video_answer', 'ice_candidate', 'video_end']:
+    # 视频聊天信令（包括群组视频）
+    elif msg_type in ['video_invite', 'video_accept', 'video_reject', 'video_offer', 'video_answer', 'ice_candidate', 'video_end', 'group_video_invite', 'group_video_accept', 'group_video_reject', 'group_video_end']:
         await handle_video_signal(data, current_username)
 
 
@@ -829,8 +829,31 @@ async def handle_mark_group_message_read(data, current_user):
 async def handle_video_signal(data, current_user):
     """处理视频聊天信令"""
     msg_type = data.get('type')
+    group_id = data.get('group_id')
+
+    # 群组视频信令
+    if msg_type in ['group_video_invite', 'group_video_accept', 'group_video_end']:
+        if not group_id or group_id not in groups_store:
+            print(f'群组视频信令失败: 群组 {group_id} 不存在')
+            return
+
+        group = groups_store[group_id]
+
+        # 广播给群内所有在线成员（除了发送者）
+        for member in group['members']:
+            if member != current_user and member in connected_users:
+                await connected_users[member].send_json(data)
+
+        print(f'群组视频信令: {msg_type} from {current_user} to group {group_id}')
+        return
+
+    # 一对一视频信令或带group_id的点对点信令
     to_user = data.get('to')
     from_user = data.get('from')
+
+    if not to_user:
+        print(f'视频信令失败: 缺少目标用户')
+        return
 
     # 确保目标用户在线
     if to_user not in connected_users:

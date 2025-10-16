@@ -254,6 +254,12 @@ function handleMessage(data) {
         case 'video_reject':
             handleVideoReject(data);
             break;
+        case 'group_video_invite':
+            handleGroupVideoInvite(data);
+            break;
+        case 'group_video_accept':
+            handleGroupVideoAccept(data);
+            break;
         case 'video_offer':
             handleVideoOffer(data);
             break;
@@ -265,6 +271,9 @@ function handleMessage(data) {
             break;
         case 'video_end':
             handleVideoEnd(data);
+            break;
+        case 'group_video_end':
+            handleGroupVideoEnd(data);
             break;
     }
 }
@@ -2868,12 +2877,23 @@ videoCallBtn.addEventListener('click', async () => {
     }
 });
 
-// 接收到视频邀请
+// 接收到视频邀请（一对一）
 function handleVideoInvite(data) {
     videoCallTarget = data.from;
+    videoCallType = 'user';
     isVideoCaller = false;
 
     callerNameSpan.textContent = data.from;
+    videoInviteModal.classList.add('active');
+}
+
+// 接收到群组视频邀请
+function handleGroupVideoInvite(data) {
+    videoCallTarget = data.group_id;
+    videoCallType = 'group';
+    isVideoCaller = false;
+
+    callerNameSpan.textContent = `${data.from} (群聊)`;
     videoInviteModal.classList.add('active');
 }
 
@@ -2890,17 +2910,26 @@ acceptVideoBtn.addEventListener('click', async () => {
 
         localVideo.srcObject = localStream;
 
-        // 发送接受信号
-        ws.send(JSON.stringify({
-            type: 'video_accept',
-            from: currentUser,
-            to: videoCallTarget
-        }));
-
         // 显示视频界面
         videoChatContainer.classList.add('active');
 
-        console.log('接受视频通话来自:', videoCallTarget);
+        if (videoCallType === 'group') {
+            // 群组视频：发送接受信号并请求成员列表
+            ws.send(JSON.stringify({
+                type: 'group_video_accept',
+                from: currentUser,
+                group_id: videoCallTarget
+            }));
+            console.log('接受群组视频通话:', videoCallTarget);
+        } else {
+            // 一对一视频
+            ws.send(JSON.stringify({
+                type: 'video_accept',
+                from: currentUser,
+                to: videoCallTarget
+            }));
+            console.log('接受视频通话来自:', videoCallTarget);
+        }
     } catch (error) {
         console.error('获取媒体设备失败:', error);
         alert('无法访问摄像头或麦克风，请检查权限设置');
@@ -2911,17 +2940,27 @@ acceptVideoBtn.addEventListener('click', async () => {
 rejectVideoBtn.addEventListener('click', () => {
     videoInviteModal.classList.remove('active');
 
-    // 发送拒绝信号
-    ws.send(JSON.stringify({
-        type: 'video_reject',
-        from: currentUser,
-        to: videoCallTarget
-    }));
+    if (videoCallType === 'group') {
+        // 群组视频拒绝
+        ws.send(JSON.stringify({
+            type: 'group_video_reject',
+            from: currentUser,
+            group_id: videoCallTarget
+        }));
+    } else {
+        // 一对一视频拒绝
+        ws.send(JSON.stringify({
+            type: 'video_reject',
+            from: currentUser,
+            to: videoCallTarget
+        }));
+    }
 
     videoCallTarget = null;
+    videoCallType = null;
 });
 
-// 接收到视频接受信号
+// 接收到视频接受信号（一对一）
 async function handleVideoAccept(data) {
     console.log('对方接受了视频通话');
 
@@ -2929,7 +2968,25 @@ async function handleVideoAccept(data) {
     videoChatContainer.classList.add('active');
 
     // 创建WebRTC连接
-    await createPeerConnection(true); // 发起方创建offer
+    await createPeerConnectionForUser(data.from, true);
+}
+
+// 接收到群组视频接受信号
+async function handleGroupVideoAccept(data) {
+    console.log(`${data.from} 加入了群组视频通话`);
+
+    // 如果是发起方，显示视频界面
+    if (isVideoCaller && !videoChatContainer.classList.contains('active')) {
+        videoChatContainer.classList.add('active');
+    }
+
+    // 添加到群组成员列表
+    groupVideoMembers.add(data.from);
+
+    // 与新成员建立连接
+    if (data.from !== currentUser) {
+        await createPeerConnectionForUser(data.from, isVideoCaller);
+    }
 }
 
 // 接收到视频拒绝信号
@@ -2949,75 +3006,53 @@ function handleVideoReject(data) {
     isVideoCaller = false;
 }
 
-// 创建WebRTC连接
-async function createPeerConnection(createOffer) {
-    peerConnection = new RTCPeerConnection(iceServers);
-
-    // 添加本地流到连接
-    localStream.getTracks().forEach(track => {
-        peerConnection.addTrack(track, localStream);
-    });
-
-    // 监听远程流
-    peerConnection.ontrack = (event) => {
-        console.log('接收到远程流');
-        remoteVideo.srcObject = event.streams[0];
-    };
-
-    // 监听ICE候选
-    peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-            ws.send(JSON.stringify({
-                type: 'ice_candidate',
-                from: currentUser,
-                to: videoCallTarget,
-                candidate: event.candidate
-            }));
-        }
-    };
-
-    // 如果是发起方，创建offer
-    if (createOffer) {
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-
-        ws.send(JSON.stringify({
-            type: 'video_offer',
-            from: currentUser,
-            to: videoCallTarget,
-            offer: offer
-        }));
-    }
-}
-
 // 处理视频offer
 async function handleVideoOffer(data) {
-    if (!peerConnection) {
-        await createPeerConnection(false);
+    const fromUser = data.from;
+
+    // 获取或创建与该用户的连接
+    let pc = peerConnections.get(fromUser);
+    if (!pc) {
+        pc = await createPeerConnectionForUser(fromUser, false);
     }
 
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+    await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
 
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
 
-    ws.send(JSON.stringify({
+    const message = {
         type: 'video_answer',
         from: currentUser,
-        to: videoCallTarget,
+        to: fromUser,
         answer: answer
-    }));
+    };
+
+    // 如果是群组通话，添加group_id
+    if (data.group_id) {
+        message.group_id = data.group_id;
+    }
+
+    ws.send(JSON.stringify(message));
 }
 
 // 处理视频answer
 async function handleVideoAnswer(data) {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+    const fromUser = data.from;
+    const pc = peerConnections.get(fromUser);
+
+    if (pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    }
 }
 
 // 处理ICE候选
 async function handleIceCandidate(data) {
-    if (peerConnection) {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    const fromUser = data.from;
+    const pc = peerConnections.get(fromUser);
+
+    if (pc) {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
     }
 }
 
@@ -3026,19 +3061,13 @@ endCallBtn.addEventListener('click', () => {
     endVideoCall();
 
     // 通知对方挂断
-    ws.send(JSON.stringify({
-        type: 'video_end',
-        from: currentUser,
-        to: videoCallTarget
-    }));
-});
-
-// 关闭视频（左上角X按钮）
-videoCloseBtn.addEventListener('click', () => {
-    endVideoCall();
-
-    // 通知对方挂断
-    if (videoCallTarget) {
+    if (videoCallType === 'group') {
+        ws.send(JSON.stringify({
+            type: 'group_video_end',
+            from: currentUser,
+            group_id: videoCallTarget
+        }));
+    } else {
         ws.send(JSON.stringify({
             type: 'video_end',
             from: currentUser,
@@ -3047,19 +3076,71 @@ videoCloseBtn.addEventListener('click', () => {
     }
 });
 
-// 处理对方挂断
-function handleVideoEnd(data) {
+// 关闭视频（左上角X按钮）
+videoCloseBtn.addEventListener('click', () => {
     endVideoCall();
-    addSystemMessage(`${data.from} 已挂断视频通话`);
+
+    // 通知对方挂断
+    if (videoCallTarget) {
+        if (videoCallType === 'group') {
+            ws.send(JSON.stringify({
+                type: 'group_video_end',
+                from: currentUser,
+                group_id: videoCallTarget
+            }));
+        } else {
+            ws.send(JSON.stringify({
+                type: 'video_end',
+                from: currentUser,
+                to: videoCallTarget
+            }));
+        }
+    }
+});
+
+// 处理对方挂断（一对一）
+function handleVideoEnd(data) {
+    // 移除特定用户的连接
+    const pc = peerConnections.get(data.from);
+    if (pc) {
+        pc.close();
+        peerConnections.delete(data.from);
+    }
+
+    removeRemoteVideo(data.from);
+
+    // 如果是一对一通话，完全结束
+    if (videoCallType === 'user') {
+        endVideoCall();
+        addSystemMessage(`${data.from} 已挂断视频通话`);
+    } else {
+        // 群组通话，只移除该用户
+        groupVideoMembers.delete(data.from);
+        addSystemMessage(`${data.from} 已离开视频通话`);
+    }
+}
+
+// 处理群组成员挂断
+function handleGroupVideoEnd(data) {
+    const pc = peerConnections.get(data.from);
+    if (pc) {
+        pc.close();
+        peerConnections.delete(data.from);
+    }
+
+    removeRemoteVideo(data.from);
+    groupVideoMembers.delete(data.from);
+
+    addSystemMessage(`${data.from} 已离开群组视频通话`);
 }
 
 // 结束视频通话
 function endVideoCall() {
-    // 关闭peer connection
-    if (peerConnection) {
-        peerConnection.close();
-        peerConnection = null;
-    }
+    // 关闭所有peer connections
+    peerConnections.forEach((pc, username) => {
+        pc.close();
+    });
+    peerConnections.clear();
 
     // 停止本地流
     if (localStream) {
@@ -3069,7 +3150,10 @@ function endVideoCall() {
 
     // 清空视频元素
     localVideo.srcObject = null;
-    remoteVideo.srcObject = null;
+
+    // 移除所有远程视频
+    const remoteVideos = videoGrid.querySelectorAll('.video-item:not(#local-video-container)');
+    remoteVideos.forEach(item => item.remove());
 
     // 隐藏视频界面
     videoChatContainer.classList.remove('active');
