@@ -8,10 +8,19 @@
 import asyncio
 import json
 import os
+import io
 from datetime import datetime
 from aiohttp import web
 import aiohttp_cors
 import aiohttp
+
+# PDF处理库
+try:
+    import PyPDF2
+    PDF_SUPPORT = True
+except ImportError:
+    PDF_SUPPORT = False
+    print('⚠️  警告: PyPDF2未安装，PDF功能将不可用。运行: pip install PyPDF2')
 
 # 数据存储文件路径
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
@@ -824,6 +833,30 @@ async def static_handler(request):
     return web.FileResponse(f'./{filename}')
 
 
+async def extract_text_from_pdf(pdf_data):
+    """从PDF字节数据中提取文本"""
+    if not PDF_SUPPORT:
+        raise Exception('PDF处理库未安装，请运行: pip install PyPDF2')
+
+    try:
+        pdf_file = io.BytesIO(pdf_data)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+
+        text_content = []
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            text = page.extract_text()
+            if text.strip():
+                text_content.append(f"[第{page_num + 1}页]\n{text}")
+
+        result = '\n\n'.join(text_content)
+        print(f'✅ PDF解析完成: {len(pdf_reader.pages)}页, {len(result)}字符')
+        return result
+    except Exception as e:
+        print(f'❌ PDF解析失败: {str(e)}')
+        raise Exception(f'PDF解析失败: {str(e)}')
+
+
 def create_app():
     """创建应用"""
     app = web.Application()
@@ -837,18 +870,48 @@ def create_app():
         )
     })
 
-    # AI聊天总结API处理函数
+    # AI聊天总结API处理函数（新版本）
     async def summarize_chat_handler(request):
-        """处理AI聊天总结请求"""
+        """处理AI聊天总结请求 - 支持PDF或文本输入（二选一）"""
         try:
-            data = await request.json()
-            users = data.get('users', [])
-            start_date = data.get('start_date', '')
-            end_date = data.get('end_date', '')
-            chat_content = data.get('chat_content', '')
-            custom_prompt = data.get('custom_prompt', '')
+            # 读取表单数据
+            reader = await request.multipart()
 
-            print(f'📊 收到AI总结请求: 用户={users}, 消息数量={len(chat_content.split(chr(10)))}条, 自定义Prompt={bool(custom_prompt)}')
+            context_text = ''
+            content_text = ''
+            custom_prompt = ''
+
+            # 处理表单字段
+            async for field in reader:
+                if field.name == 'context_text':
+                    context_text = (await field.read()).decode('utf-8')
+                    print(f'📝 收到上下文文本: {len(context_text)} 字符')
+                elif field.name == 'context_pdf':
+                    # 读取PDF文件
+                    pdf_data = await field.read()
+                    context_text = await extract_text_from_pdf(pdf_data)
+                    print(f'📎 收到上下文PDF: {len(context_text)} 字符')
+                elif field.name == 'content_text':
+                    content_text = (await field.read()).decode('utf-8')
+                    print(f'📝 收到总结文本: {len(content_text)} 字符')
+                elif field.name == 'content_pdf':
+                    # 读取PDF文件
+                    pdf_data = await field.read()
+                    content_text = await extract_text_from_pdf(pdf_data)
+                    print(f'📎 收到总结PDF: {len(content_text)} 字符')
+                elif field.name == 'custom_prompt':
+                    custom_prompt = (await field.read()).decode('utf-8')
+
+            print(f'📊 AI总结请求汇总:')
+            print(f'   - 上下文长度: {len(context_text)} 字符')
+            print(f'   - 待总结内容长度: {len(content_text)} 字符')
+            print(f'   - 自定义Prompt: {bool(custom_prompt)}')
+
+            # 验证输入
+            if not context_text or not content_text:
+                return web.json_response({
+                    'error': '上下文和待总结内容不能为空'
+                }, status=400)
 
             # 调用Claude API进行总结
             api_key = os.environ.get('ANTHROPIC_API_KEY', '')
@@ -862,41 +925,34 @@ def create_app():
                 # 使用用户自定义的prompt
                 prompt = f"""{custom_prompt}
 
-【重要】请严格按照以下信息进行分析：
-- 关注用户：{', '.join(users)}
-- 时间范围：{start_date} 至 {end_date}
-- 请以所选用户为核心进行分析总结
+【上下文信息】（历史聊天记录作为背景）：
+{context_text}
 
-聊天记录：
-{chat_content}
+【需要总结的聊天记录】：
+{content_text}
 
-注意：
-1. 只总结上述时间段内的对话内容，不要超越该时间范围
-2. 重点关注所选用户的发言、观点和行为
-3. 分析这些用户在对话中的角色和贡献"""
+请根据上下文信息和提供的prompt要求，对需要总结的聊天记录进行分析总结。"""
             else:
                 # 使用默认prompt
                 prompt = f"""请对以下聊天记录进行详细总结分析。
 
-【关键信息】
-- 关注用户：{', '.join(users)}
-- 时间范围：{start_date} 至 {end_date}
-- 请以所选用户为核心进行分析
+【上下文信息】（历史聊天记录作为背景）：
+{context_text}
 
-【聊天记录】
-{chat_content}
+【需要总结的聊天记录】：
+{content_text}
 
 【分析要求】
-请严格按照以下几个方面进行总结（重要：只分析指定时间段内的内容）：
+请结合上下文信息，对需要总结的聊天记录进行以下几个方面的总结：
 
 1. 核心主题：讨论的主要话题是什么
-2. 用户角色分析：所选用户（{', '.join(users)}）在对话中的角色、立场和主要观点
-3. 关键信息：提取重要的信息点、决策或结论（重点关注所选用户相关的部分）
-4. 情感基调：对话的整体氛围和情绪，特别是所选用户的情绪表达
-5. 行动项：是否有需要跟进的事项或待办任务（特别标注与所选用户相关的）
-6. 用户贡献度：评估所选用户在讨论中的参与度和影响力
+2. 关键信息：提取重要的信息点、决策或结论
+3. 用户观点：主要参与者的立场和观点
+4. 情感基调：对话的整体氛围和情绪
+5. 行动项：是否有需要跟进的事项或待办任务
+6. 上下文关联：结合历史聊天记录，分析当前对话的背景和延续性
 
-请用清晰、简洁的中文进行总结，并在总结中明确体现所选用户的核心作用。"""
+请用清晰、简洁的中文进行总结。"""
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(

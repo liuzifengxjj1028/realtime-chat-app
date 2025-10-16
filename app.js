@@ -1629,375 +1629,531 @@ window.addEventListener('load', () => {
     }
 });
 
-// ============ 机器人输入区域功能 ============
+// ============ 怡总机器人双输入模式功能 ============
 
-// PDF上传区域点击
-botPdfDropZone.addEventListener('click', () => {
-    botPdfInput.click();
+// 获取所有新的元素
+const yizongContextTabText = document.getElementById('yizong-context-tab-text');
+const yizongContextTabPdf = document.getElementById('yizong-context-tab-pdf');
+const yizongContextTextArea = document.getElementById('yizong-context-text-area');
+const yizongContextPdfArea = document.getElementById('yizong-context-pdf-area');
+const yizongContextTextInput = document.getElementById('yizong-context-text-input');
+const yizongContextPdfInput = document.getElementById('yizong-context-pdf-input');
+const yizongContextUploadZone = document.getElementById('yizong-context-upload-zone');
+const yizongContextPdfStatus = document.getElementById('yizong-context-pdf-status');
+const yizongContextPdfName = document.getElementById('yizong-context-pdf-name');
+const yizongContextPdfSize = document.getElementById('yizong-context-pdf-size');
+const yizongRemoveContextPdf = document.getElementById('yizong-remove-context-pdf');
+
+const yizongContentTabText = document.getElementById('yizong-content-tab-text');
+const yizongContentTabPdf = document.getElementById('yizong-content-tab-pdf');
+const yizongContentTextArea = document.getElementById('yizong-content-text-area');
+const yizongContentPdfArea = document.getElementById('yizong-content-pdf-area');
+const yizongContentTextInput = document.getElementById('yizong-content-text-input');
+const yizongContentPdfInput = document.getElementById('yizong-content-pdf-input');
+const yizongContentUploadZone = document.getElementById('yizong-content-upload-zone');
+const yizongContentPdfStatus = document.getElementById('yizong-content-pdf-status');
+const yizongContentPdfName = document.getElementById('yizong-content-pdf-name');
+const yizongContentPdfSize = document.getElementById('yizong-content-pdf-size');
+const yizongRemoveContentPdf = document.getElementById('yizong-remove-content-pdf');
+
+const yizongPromptInput = document.getElementById('yizong-prompt-input');
+const yizongSubmitBtn = document.getElementById('yizong-submit-btn');
+const yizongResultArea = document.getElementById('yizong-result-area');
+const yizongResultContent = document.getElementById('yizong-result-content');
+const yizongLoading = document.getElementById('yizong-loading');
+const yizongSummaryInfo = document.getElementById('yizong-summary-info');
+
+let yizongContextPdf = null;
+let yizongContentPdf = null;
+
+// 上下文区域：选项卡切换
+yizongContextTabText.addEventListener('click', () => {
+    yizongContextTabText.style.background = '#6c5ce7';
+    yizongContextTabText.style.color = 'white';
+    yizongContextTabPdf.style.background = '#e0e0e0';
+    yizongContextTabPdf.style.color = '#666';
+    yizongContextTextArea.style.display = 'block';
+    yizongContextPdfArea.style.display = 'none';
 });
 
-// PDF文件选择
-botPdfInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        handleBotPdfFile(file);
-    }
+yizongContextTabPdf.addEventListener('click', () => {
+    yizongContextTabPdf.style.background = '#6c5ce7';
+    yizongContextTabPdf.style.color = 'white';
+    yizongContextTabText.style.background = '#e0e0e0';
+    yizongContextTabText.style.color = '#666';
+    yizongContextTextArea.style.display = 'none';
+    yizongContextPdfArea.style.display = 'block';
 });
 
-// PDF拖拽功能
-botPdfDropZone.addEventListener('dragover', (e) => {
+// 待总结内容区域：选项卡切换
+yizongContentTabText.addEventListener('click', () => {
+    yizongContentTabText.style.background = '#f5a623';
+    yizongContentTabText.style.color = 'white';
+    yizongContentTabPdf.style.background = '#e0e0e0';
+    yizongContentTabPdf.style.color = '#666';
+    yizongContentTextArea.style.display = 'block';
+    yizongContentPdfArea.style.display = 'none';
+});
+
+yizongContentTabPdf.addEventListener('click', () => {
+    yizongContentTabPdf.style.background = '#f5a623';
+    yizongContentTabPdf.style.color = 'white';
+    yizongContentTabText.style.background = '#e0e0e0';
+    yizongContentTabText.style.color = '#666';
+    yizongContentTextArea.style.display = 'none';
+    yizongContentPdfArea.style.display = 'block';
+});
+
+// 上下文PDF上传处理
+yizongContextUploadZone.addEventListener('click', () => yizongContextPdfInput.click());
+yizongContextPdfInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) handleYizongContextPdf(e.target.files[0]);
+});
+yizongContextUploadZone.addEventListener('dragover', (e) => {
     e.preventDefault();
-    botPdfDropZone.style.background = '#f0f0ff';
+    yizongContextUploadZone.style.background = '#f0f0ff';
 });
-
-botPdfDropZone.addEventListener('dragleave', (e) => {
+yizongContextUploadZone.addEventListener('dragleave', (e) => {
     e.preventDefault();
-    botPdfDropZone.style.background = 'white';
+    yizongContextUploadZone.style.background = 'white';
 });
-
-botPdfDropZone.addEventListener('drop', (e) => {
+yizongContextUploadZone.addEventListener('drop', (e) => {
     e.preventDefault();
-    botPdfDropZone.style.background = 'white';
+    yizongContextUploadZone.style.background = 'white';
     const file = e.dataTransfer.files[0];
     if (file && file.type === 'application/pdf') {
-        handleBotPdfFile(file);
-    } else {
-        alert('请上传PDF文件！');
+        handleYizongContextPdf(file);
     }
 });
+yizongRemoveContextPdf.addEventListener('click', () => {
+    yizongContextPdf = null;
+    yizongContextPdfInput.value = '';
+    yizongContextPdfStatus.style.display = 'none';
+});
 
-// 处理PDF文件
-function handleBotPdfFile(file) {
+function handleYizongContextPdf(file) {
     if (file.size > 10 * 1024 * 1024) {
         alert('文件大小不能超过10MB！');
         return;
     }
-
-    selectedBotPdfFile = file;
-    botPdfFileName.textContent = file.name;
-    botPdfFileSize.textContent = formatFileSize(file.size);
-    botPdfFileInfo.style.display = 'flex';
-    botPdfDropZone.style.display = 'none';
+    yizongContextPdf = file;
+    yizongContextPdfName.textContent = file.name;
+    yizongContextPdfSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    yizongContextPdfStatus.style.display = 'block';
 }
 
-// 移除PDF文件
-botRemovePdfBtn.addEventListener('click', () => {
-    selectedBotPdfFile = null;
-    botPdfInput.value = '';
-    botPdfFileInfo.style.display = 'none';
-    botPdfDropZone.style.display = 'flex';
+// 待总结内容PDF上传处理
+yizongContentUploadZone.addEventListener('click', () => yizongContentPdfInput.click());
+yizongContentPdfInput.addEventListener('change', (e) => {
+    if (e.target.files[0]) handleYizongContentPdf(e.target.files[0]);
+});
+yizongContentUploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    yizongContentUploadZone.style.background = '#fff5e6';
+});
+yizongContentUploadZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    yizongContentUploadZone.style.background = 'white';
+});
+yizongContentUploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    yizongContentUploadZone.style.background = 'white';
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/pdf') {
+        handleYizongContentPdf(file);
+    }
+});
+yizongRemoveContentPdf.addEventListener('click', () => {
+    yizongContentPdf = null;
+    yizongContentPdfInput.value = '';
+    yizongContentPdfStatus.style.display = 'none';
 });
 
-// 格式化文件大小
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+function handleYizongContentPdf(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        alert('文件大小不能超过10MB！');
+        return;
+    }
+    yizongContentPdf = file;
+    yizongContentPdfName.textContent = file.name;
+    yizongContentPdfSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    yizongContentPdfStatus.style.display = 'block';
 }
 
-// 统一的总结按钮
-if (botSubmitBtn) {
-    console.log('正在绑定总结按钮事件...');
-    botSubmitBtn.addEventListener('click', async () => {
-        console.log('总结按钮被点击');
-        let content = '';
+// 开始总结按钮
+yizongSubmitBtn.addEventListener('click', async () => {
+    // 验证上下文输入
+    let contextContent = '';
+    let contextMode = '';
+    if (yizongContextTextArea.style.display === 'block') {
+        contextContent = yizongContextTextInput.value.trim();
+        if (!contextContent) {
+            alert('请输入上下文文本');
+            return;
+        }
+        contextMode = '文本';
+    } else {
+        if (!yizongContextPdf) {
+            alert('请上传上下文PDF文件');
+            return;
+        }
+        contextMode = 'PDF';
+    }
 
-        // 优先使用文本输入
-        const textContent = botTextInput.value.trim();
-        console.log('文本内容:', textContent);
-        if (textContent) {
-            content = textContent;
-        } else if (selectedBotPdfFile) {
-            // 如果没有文本，使用PDF
-            try {
-                botSubmitBtn.disabled = true;
-                botSubmitBtn.textContent = '📤 处理中...';
+    // 验证待总结内容输入
+    let contentToSummarize = '';
+    let contentMode = '';
+    if (yizongContentTextArea.style.display === 'block') {
+        contentToSummarize = yizongContentTextInput.value.trim();
+        if (!contentToSummarize) {
+            alert('请输入需要总结的内容');
+            return;
+        }
+        contentMode = '文本';
+    } else {
+        if (!yizongContentPdf) {
+            alert('请上传需要总结的PDF文件');
+            return;
+        }
+        contentMode = 'PDF';
+    }
 
-                content = await extractPdfText(selectedBotPdfFile);
-                if (!content) {
-                    alert('PDF文件内容为空或无法读取！');
-                    botSubmitBtn.disabled = false;
-                    botSubmitBtn.textContent = '📊 开始总结';
-                    return;
-                }
-            } catch (error) {
-                alert('PDF文件读取失败：' + error.message);
-                botSubmitBtn.disabled = false;
-                botSubmitBtn.textContent = '📊 开始总结';
-                return;
-            }
+    const customPrompt = yizongPromptInput.value.trim();
+
+    // 显示加载状态
+    yizongResultArea.style.display = 'block';
+    yizongLoading.style.display = 'block';
+    yizongResultContent.textContent = '';
+    yizongSummaryInfo.textContent = `上下文:${contextMode} + 总结内容:${contentMode}`;
+
+    // 准备FormData
+    const formData = new FormData();
+
+    // 添加上下文
+    if (contextMode === '文本') {
+        formData.append('context_text', contextContent);
+    } else {
+        formData.append('context_pdf', yizongContextPdf);
+    }
+
+    // 添加待总结内容
+    if (contentMode === '文本') {
+        formData.append('content_text', contentToSummarize);
+    } else {
+        formData.append('content_pdf', yizongContentPdf);
+    }
+
+    // 添加自定义prompt
+    if (customPrompt) {
+        formData.append('custom_prompt', customPrompt);
+    }
+
+    try {
+        const response = await fetch('http://localhost:8080/api/summarize_chat', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+        yizongLoading.style.display = 'none';
+
+        if (response.ok) {
+            yizongResultContent.textContent = result.summary;
         } else {
-            alert('请输入聊天记录或上传PDF文件！');
-            return;
+            yizongResultContent.textContent = '错误：' + (result.error || '未知错误');
         }
+    } catch (error) {
+        yizongLoading.style.display = 'none';
+        yizongResultContent.textContent = '请求失败：' + error.message;
+    }
+});
 
-        // 显示加载状态
-        botResultArea.style.display = 'block';
-        botResultContent.innerHTML = '<div style="text-align: center; padding: 40px;"><div style="border: 4px solid #f3f3f3; border-top: 4px solid #6c5ce7; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div><div style="color: #666;">AI正在分析中...</div></div>';
+// ========== AI聊天总结功能（新版本） ==========
 
-        // 发送给怡总
-        console.log('准备发送消息给怡总，内容长度:', content.length);
-        ws.send(JSON.stringify({
-            type: 'send_message',
-            to: '怡总',
-            content: content,
-            content_type: 'text',
-            timestamp: Date.now()
-        }));
-        console.log('消息已发送');
+// 获取新的DOM元素
+const contextTabText = document.getElementById('context-tab-text');
+const contextTabPdf = document.getElementById('context-tab-pdf');
+const contextTextArea = document.getElementById('context-text-area');
+const contextPdfArea = document.getElementById('context-pdf-area');
+const contextTextInput = document.getElementById('context-text-input');
+const contextPdfInput = document.getElementById('context-pdf-input');
+const contextUploadZone = document.getElementById('context-upload-zone');
+const contextPdfStatus = document.getElementById('context-pdf-status');
+const contextPdfName = document.getElementById('context-pdf-name');
+const contextPdfSize = document.getElementById('context-pdf-size');
+const contextRemovePdfBtn = document.getElementById('context-remove-pdf-btn');
 
-        // 清空输入
-        botTextInput.value = '';
-        if (selectedBotPdfFile) {
-            selectedBotPdfFile = null;
-            botPdfInput.value = '';
-            botPdfFileInfo.style.display = 'none';
-            botPdfDropZone.style.display = 'flex';
-        }
+const contentTabText = document.getElementById('content-tab-text');
+const contentTabPdf = document.getElementById('content-tab-pdf');
+const contentTextArea = document.getElementById('content-text-area');
+const contentPdfArea = document.getElementById('content-pdf-area');
+const contentTextInput = document.getElementById('content-text-input');
+const contentPdfInput = document.getElementById('content-pdf-input');
+const contentUploadZone = document.getElementById('content-upload-zone');
+const contentPdfStatus = document.getElementById('content-pdf-status');
+const contentPdfName = document.getElementById('content-pdf-name');
+const contentPdfSize = document.getElementById('content-pdf-size');
+const contentRemovePdfBtn = document.getElementById('content-remove-pdf-btn');
 
-        botSubmitBtn.disabled = false;
-        botSubmitBtn.textContent = '📊 开始总结';
-    });
-    console.log('总结按钮事件绑定完成');
-} else {
-    console.error('错误：找不到botSubmitBtn元素！');
+// 存储上传的PDF文件
+let contextPdf = null;
+let contentPdf = null;
+
+// 上下文区域：选项卡切换
+contextTabText.addEventListener('click', () => {
+    contextTabText.style.background = '#6c5ce7';
+    contextTabText.style.color = 'white';
+    contextTabPdf.style.background = '#e0e0e0';
+    contextTabPdf.style.color = '#666';
+    contextTextArea.style.display = 'block';
+    contextPdfArea.style.display = 'none';
+});
+
+contextTabPdf.addEventListener('click', () => {
+    contextTabPdf.style.background = '#6c5ce7';
+    contextTabPdf.style.color = 'white';
+    contextTabText.style.background = '#e0e0e0';
+    contextTabText.style.color = '#666';
+    contextTextArea.style.display = 'none';
+    contextPdfArea.style.display = 'block';
+});
+
+// 待总结内容区域：选项卡切换
+contentTabText.addEventListener('click', () => {
+    contentTabText.style.background = '#f5a623';
+    contentTabText.style.color = 'white';
+    contentTabPdf.style.background = '#e0e0e0';
+    contentTabPdf.style.color = '#666';
+    contentTextArea.style.display = 'block';
+    contentPdfArea.style.display = 'none';
+});
+
+contentTabPdf.addEventListener('click', () => {
+    contentTabPdf.style.background = '#f5a623';
+    contentTabPdf.style.color = 'white';
+    contentTabText.style.background = '#e0e0e0';
+    contentTabText.style.color = '#666';
+    contentTextArea.style.display = 'none';
+    contentPdfArea.style.display = 'block';
+});
+
+// 上下文PDF上传
+contextUploadZone.addEventListener('click', () => {
+    contextPdfInput.click();
+});
+
+contextUploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    contextUploadZone.style.borderColor = '#6c5ce7';
+    contextUploadZone.style.background = 'rgba(108, 92, 231, 0.1)';
+});
+
+contextUploadZone.addEventListener('dragleave', () => {
+    contextUploadZone.style.borderColor = '#6c5ce7';
+    contextUploadZone.style.background = 'rgba(108, 92, 231, 0.05)';
+});
+
+contextUploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    contextUploadZone.style.borderColor = '#6c5ce7';
+    contextUploadZone.style.background = 'rgba(108, 92, 231, 0.05)';
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type === 'application/pdf') {
+        handleContextPdfUpload(files[0]);
+    } else {
+        alert('请上传PDF文件');
+    }
+});
+
+contextPdfInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleContextPdfUpload(e.target.files[0]);
+    }
+});
+
+function handleContextPdfUpload(file) {
+    contextPdf = file;
+    contextPdfName.textContent = file.name;
+    contextPdfSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    contextPdfStatus.style.display = 'block';
 }
 
-// 提取PDF文本（使用pdf.js库）
-async function extractPdfText(file) {
-    return new Promise((resolve, reject) => {
-        // 检查文件大小（限制10MB）
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.size > maxSize) {
-            reject(new Error('PDF文件大小超过10MB限制'));
-            return;
-        }
+contextRemovePdfBtn.addEventListener('click', () => {
+    contextPdf = null;
+    contextPdfInput.value = '';
+    contextPdfStatus.style.display = 'none';
+});
 
-        const reader = new FileReader();
+// 待总结内容PDF上传
+contentUploadZone.addEventListener('click', () => {
+    contentPdfInput.click();
+});
 
-        reader.onload = async function(e) {
-            try {
-                const arrayBuffer = e.target.result;
+contentUploadZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    contentUploadZone.style.borderColor = '#f5a623';
+    contentUploadZone.style.background = 'rgba(245, 166, 35, 0.1)';
+});
 
-                // 配置 pdf.js worker
-                if (typeof pdfjsLib !== 'undefined') {
-                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-                } else {
-                    reject(new Error('PDF.js 库未加载'));
-                    return;
-                }
+contentUploadZone.addEventListener('dragleave', () => {
+    contentUploadZone.style.borderColor = '#f5a623';
+    contentUploadZone.style.background = 'rgba(245, 166, 35, 0.05)';
+});
 
-                // 加载PDF文档
-                const loadingTask = pdfjsLib.getDocument({data: arrayBuffer});
-                const pdf = await loadingTask.promise;
+contentUploadZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    contentUploadZone.style.borderColor = '#f5a623';
+    contentUploadZone.style.background = 'rgba(245, 166, 35, 0.05)';
 
-                console.log(`PDF加载成功，共 ${pdf.numPages} 页`);
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type === 'application/pdf') {
+        handleContentPdfUpload(files[0]);
+    } else {
+        alert('请上传PDF文件');
+    }
+});
 
-                let fullText = '';
+contentPdfInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+        handleContentPdfUpload(e.target.files[0]);
+    }
+});
 
-                // 逐页提取文本
-                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                    const page = await pdf.getPage(pageNum);
-                    const textContent = await page.getTextContent();
-
-                    // 提取页面文本
-                    const pageText = textContent.items
-                        .map(item => item.str)
-                        .join(' ');
-
-                    fullText += pageText + '\n\n';
-                }
-
-                if (!fullText.trim()) {
-                    reject(new Error('PDF文件中没有可提取的文本内容（可能是扫描版PDF）'));
-                    return;
-                }
-
-                console.log(`成功提取 ${fullText.length} 个字符`);
-                resolve(fullText.trim());
-
-            } catch (error) {
-                console.error('PDF解析错误:', error);
-                reject(new Error('PDF文件解析失败：' + error.message));
-            }
-        };
-
-        reader.onerror = () => reject(new Error('文件读取失败'));
-        reader.readAsArrayBuffer(file);
-    });
+function handleContentPdfUpload(file) {
+    contentPdf = file;
+    contentPdfName.textContent = file.name;
+    contentPdfSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+    contentPdfStatus.style.display = 'block';
 }
 
-// ========== AI聊天总结功能 ==========
+contentRemovePdfBtn.addEventListener('click', () => {
+    contentPdf = null;
+    contentPdfInput.value = '';
+    contentPdfStatus.style.display = 'none';
+});
 
 // 打开AI总结对话框
 aiSummaryBtn.addEventListener('click', () => {
-    // 生成用户选择列表
-    userSelectContainer.innerHTML = '';
-
-    // 先添加当前用户自己
-    const selfCheckbox = document.createElement('label');
-    selfCheckbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s; background: #f0f7ff;';
-    selfCheckbox.innerHTML = `
-        <input type="checkbox" value="${currentUser}" style="margin-right: 8px;">
-        <span style="font-size: 14px; color: #333; font-weight: 600;">${currentUser}</span>
-        <span style="font-size: 12px; color: #07c160; margin-left: 8px;">我自己</span>
-    `;
-    selfCheckbox.onmouseover = () => selfCheckbox.style.background = '#e6f3ff';
-    selfCheckbox.onmouseout = () => selfCheckbox.style.background = '#f0f7ff';
-    userSelectContainer.appendChild(selfCheckbox);
-
-    // 添加所有联系人（排除机器人）
-    contacts.forEach((contactInfo, username) => {
-        if (!contactInfo.isBot) {
-            const checkbox = document.createElement('label');
-            checkbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s;';
-            checkbox.innerHTML = `
-                <input type="checkbox" value="${username}" style="margin-right: 8px;">
-                <span style="font-size: 14px; color: #333;">${username}</span>
-                <span style="font-size: 12px; color: #999; margin-left: 8px;">${contactInfo.online ? '在线' : '离线'}</span>
-            `;
-            checkbox.onmouseover = () => checkbox.style.background = '#f0f0f0';
-            checkbox.onmouseout = () => checkbox.style.background = 'transparent';
-            userSelectContainer.appendChild(checkbox);
-        }
-    });
-
-    // 设置默认时间范围（最近7天）
-    const today = new Date();
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    summaryEndDate.value = today.toISOString().split('T')[0];
-    summaryStartDate.value = weekAgo.toISOString().split('T')[0];
+    // 重置表单
+    contextTextInput.value = '';
+    contentTextInput.value = '';
+    contextPdf = null;
+    contentPdf = null;
+    contextPdfInput.value = '';
+    contentPdfInput.value = '';
+    contextPdfStatus.style.display = 'none';
+    contentPdfStatus.style.display = 'none';
+    summaryPromptInput.value = '';
 
     aiSummaryModal.style.display = 'flex';
-});
-
-// 切换Prompt配置区域
-configSummaryPromptBtn.addEventListener('click', () => {
-    if (summaryPromptConfig.style.display === 'none') {
-        summaryPromptConfig.style.display = 'block';
-        configSummaryPromptBtn.textContent = '⚙️ 隐藏Prompt';
-    } else {
-        summaryPromptConfig.style.display = 'none';
-        configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
-    }
 });
 
 // 关闭对话框
 closeAiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'none';
-    summaryPromptConfig.style.display = 'none';
-    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
 });
 
 cancelAiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'none';
-    summaryPromptConfig.style.display = 'none';
-    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
 });
 
 // 提交AI总结请求
 submitAiSummaryBtn.addEventListener('click', async () => {
-    // 获取选中的用户
-    const selectedUsers = Array.from(userSelectContainer.querySelectorAll('input[type="checkbox"]:checked'))
-        .map(cb => cb.value);
-
-    if (selectedUsers.length === 0) {
-        alert('请至少选择一个用户');
-        return;
+    // 验证上下文内容：根据当前选项卡验证
+    let contextContent = '';
+    let contextMode = '';
+    if (contextTextArea.style.display === 'block') {
+        // 文本模式
+        contextContent = contextTextInput.value.trim();
+        if (!contextContent) {
+            alert('请输入上下文文本');
+            return;
+        }
+        contextMode = '文本';
+    } else {
+        // PDF模式
+        if (!contextPdf) {
+            alert('请上传上下文PDF文件');
+            return;
+        }
+        contextMode = 'PDF';
     }
 
-    if (!summaryStartDate.value || !summaryEndDate.value) {
-        alert('请选择时间范围');
-        return;
+    // 验证待总结内容：根据当前选项卡验证
+    let contentToSummarize = '';
+    let contentMode = '';
+    if (contentTextArea.style.display === 'block') {
+        // 文本模式
+        contentToSummarize = contentTextInput.value.trim();
+        if (!contentToSummarize) {
+            alert('请输入需要总结的文本');
+            return;
+        }
+        contentMode = '文本';
+    } else {
+        // PDF模式
+        if (!contentPdf) {
+            alert('请上传需要总结的PDF文件');
+            return;
+        }
+        contentMode = 'PDF';
     }
 
-    const startDate = new Date(summaryStartDate.value);
-    const endDate = new Date(summaryEndDate.value);
-    endDate.setHours(23, 59, 59, 999); // 设置为当天结束
-
-    if (startDate > endDate) {
-        alert('开始日期不能晚于结束日期');
-        return;
-    }
-
-    // 收集符合条件的消息
-    const filteredMessages = [];
-
-    messages.forEach((msgList, chatKey) => {
-        msgList.forEach(msg => {
-            const msgDate = new Date(msg.timestamp);
-
-            // 检查是否在时间范围内
-            if (msgDate >= startDate && msgDate <= endDate) {
-                // 检查发送者或接收者是否在选中用户列表中
-                if (selectedUsers.includes(msg.from) || selectedUsers.includes(msg.to)) {
-                    filteredMessages.push(msg);
-                }
-            }
-        });
-    });
-
-    if (filteredMessages.length === 0) {
-        alert('没有找到符合条件的聊天记录');
-        return;
-    }
-
-    // 按时间排序
-    filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
-
-    // 获取自定义prompt（如果有）
+    // 获取自定义prompt
     const customPrompt = summaryPromptInput.value.trim();
 
     // 关闭对话框，打开抽屉
     aiSummaryModal.style.display = 'none';
-    summaryPromptConfig.style.display = 'none';
-    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
-    showSummaryDrawer(selectedUsers, startDate, endDate, filteredMessages, customPrompt);
+    showSummaryDrawer(contextContent, contentToSummarize, customPrompt, contextMode, contentMode);
 });
 
 // 显示总结抽屉并调用AI
-async function showSummaryDrawer(users, startDate, endDate, messages, customPrompt = '') {
+async function showSummaryDrawer(contextContent, contentToSummarize, customPrompt = '', contextMode = '', contentMode = '') {
     // 显示抽屉和遮罩
     drawerOverlay.style.display = 'block';
-    aiSummaryDrawer.style.display = 'block';
+    aiSummaryDrawer.style.display = 'flex';
 
-    // 显示总结信息
-    summaryUsersInfo.textContent = users.join(', ');
-    summaryTimeInfo.textContent = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
-    summaryCountInfo.textContent = `${messages.length} 条消息`;
+    // 显示输入方式信息
+    const summaryInputInfo = document.getElementById('summary-input-info');
+    summaryInputInfo.textContent = `上下文:${contextMode} + 总结内容:${contentMode}`;
 
     // 显示加载状态
     summaryLoading.style.display = 'block';
     summaryResultContent.textContent = '';
 
-    // 准备消息内容
-    const chatContent = messages.map(msg => {
-        const time = new Date(msg.timestamp).toLocaleString();
-        if (msg.content_type === 'image') {
-            return `[${time}] ${msg.from}: [发送了一张图片]`;
-        } else {
-            return `[${time}] ${msg.from}: ${msg.content}`;
-        }
-    }).join('\n');
-
-    // 调用后端API进行总结
     try {
+        // 准备表单数据
+        const formData = new FormData();
+
+        // 添加上下文（只用一种方式）
+        if (contextMode === '文本') {
+            formData.append('context_text', contextContent);
+        } else if (contextMode === 'PDF') {
+            formData.append('context_pdf', contextPdf);
+        }
+
+        // 添加待总结内容（只用一种方式）
+        if (contentMode === '文本') {
+            formData.append('content_text', contentToSummarize);
+        } else if (contentMode === 'PDF') {
+            formData.append('content_pdf', contentPdf);
+        }
+
+        // 添加自定义prompt
+        if (customPrompt) {
+            formData.append('custom_prompt', customPrompt);
+        }
+
+        // 调用后端API进行总结
         const response = await fetch('http://localhost:8080/api/summarize_chat', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                users: users,
-                start_date: startDate.toISOString(),
-                end_date: endDate.toISOString(),
-                chat_content: chatContent,
-                custom_prompt: customPrompt
-            })
+            body: formData
         });
 
         if (!response.ok) {
-            throw new Error('API请求失败');
+            const error = await response.json();
+            throw new Error(error.error || 'API请求失败');
         }
 
         const result = await response.json();
