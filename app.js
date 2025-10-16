@@ -1455,6 +1455,7 @@ function selectGroup(groupId, groupName) {
     botSettingsBtn.style.display = 'none';
     botInputArea.style.display = 'none';
     inputArea.style.display = 'flex';
+    videoCallBtn.style.display = 'none'; // 群聊暂不支持视频聊天
 
     // 更新样式
     document.querySelectorAll('.contact-item').forEach(item => {
