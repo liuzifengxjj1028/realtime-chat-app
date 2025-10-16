@@ -870,71 +870,100 @@ def create_app():
         )
     })
 
-    # AI聊天总结API处理函数（新版本）
+    # AI聊天总结API处理函数（支持两种模式）
     async def summarize_chat_handler(request):
-        """处理AI聊天总结请求 - 支持PDF或文本输入（二选一）"""
+        """处理AI聊天总结请求 - 支持JSON（旧版）和multipart（新版）两种格式"""
         try:
-            # 读取表单数据
-            reader = await request.multipart()
+            content_type = request.headers.get('Content-Type', '')
 
-            context_text = ''
-            content_text = ''
-            custom_prompt = ''
+            # 判断请求类型
+            if 'application/json' in content_type:
+                # 旧版模式：用户选择+时间范围（JSON格式）
+                data = await request.json()
+                users = data.get('users', [])
+                start_date = data.get('start_date', '')
+                end_date = data.get('end_date', '')
+                chat_content = data.get('chat_content', '')
+                custom_prompt = data.get('custom_prompt', '')
 
-            # 处理表单字段
-            async for field in reader:
-                if field.name == 'context_text':
-                    context_text = (await field.read()).decode('utf-8')
-                    print(f'📝 收到上下文文本: {len(context_text)} 字符')
-                elif field.name == 'context_pdf':
-                    # 读取PDF文件
-                    pdf_data = await field.read()
-                    context_text = await extract_text_from_pdf(pdf_data)
-                    print(f'📎 收到上下文PDF: {len(context_text)} 字符')
-                elif field.name == 'content_text':
-                    content_text = (await field.read()).decode('utf-8')
-                    print(f'📝 收到总结文本: {len(content_text)} 字符')
-                elif field.name == 'content_pdf':
-                    # 读取PDF文件
-                    pdf_data = await field.read()
-                    content_text = await extract_text_from_pdf(pdf_data)
-                    print(f'📎 收到总结PDF: {len(content_text)} 字符')
-                elif field.name == 'custom_prompt':
-                    custom_prompt = (await field.read()).decode('utf-8')
+                print(f'📊 收到AI总结请求（旧版）: 用户={users}, 消息数量={len(chat_content.split(chr(10)))}条')
 
-            print(f'📊 AI总结请求汇总:')
-            print(f'   - 上下文长度: {len(context_text)} 字符')
-            print(f'   - 待总结内容长度: {len(content_text)} 字符')
-            print(f'   - 自定义Prompt: {bool(custom_prompt)}')
+                # 构建总结prompt（旧版）
+                if custom_prompt:
+                    prompt = f"""{custom_prompt}
 
-            # 验证输入
-            if not context_text or not content_text:
-                return web.json_response({
-                    'error': '上下文和待总结内容不能为空'
-                }, status=400)
+【重要】请严格按照以下信息进行分析：
+- 关注用户：{', '.join(users)}
+- 时间范围：{start_date} 至 {end_date}
 
-            # 调用Claude API进行总结
-            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
-            if not api_key:
-                return web.json_response({
-                    'error': 'API密钥未配置'
-                }, status=500)
+聊天记录：
+{chat_content}"""
+                else:
+                    prompt = f"""请对以下聊天记录进行详细总结分析。
 
-            # 构建总结prompt
-            if custom_prompt:
-                # 使用用户自定义的prompt
-                prompt = f"""{custom_prompt}
+【关键信息】
+- 关注用户：{', '.join(users)}
+- 时间范围：{start_date} 至 {end_date}
+
+【聊天记录】
+{chat_content}
+
+【分析要求】
+请严格按照以下几个方面进行总结：
+1. 核心主题：讨论的主要话题是什么
+2. 用户角色分析：所选用户在对话中的角色、立场和主要观点
+3. 关键信息：提取重要的信息点、决策或结论
+4. 情感基调：对话的整体氛围和情绪
+5. 行动项：是否有需要跟进的事项或待办任务
+
+请用清晰、简洁的中文进行总结。"""
+
+            else:
+                # 新版模式：上下文+待总结内容（multipart格式）
+                reader = await request.multipart()
+
+                context_text = ''
+                content_text = ''
+                custom_prompt = ''
+
+                # 处理表单字段
+                async for field in reader:
+                    if field.name == 'context_text':
+                        context_text = (await field.read()).decode('utf-8')
+                        print(f'📝 收到上下文文本: {len(context_text)} 字符')
+                    elif field.name == 'context_pdf':
+                        pdf_data = await field.read()
+                        context_text = await extract_text_from_pdf(pdf_data)
+                        print(f'📎 收到上下文PDF: {len(context_text)} 字符')
+                    elif field.name == 'content_text':
+                        content_text = (await field.read()).decode('utf-8')
+                        print(f'📝 收到总结文本: {len(content_text)} 字符')
+                    elif field.name == 'content_pdf':
+                        pdf_data = await field.read()
+                        content_text = await extract_text_from_pdf(pdf_data)
+                        print(f'📎 收到总结PDF: {len(content_text)} 字符')
+                    elif field.name == 'custom_prompt':
+                        custom_prompt = (await field.read()).decode('utf-8')
+
+                print(f'📊 AI总结请求（新版）: 上下文={len(context_text)}字符, 内容={len(content_text)}字符')
+
+                # 验证输入
+                if not context_text or not content_text:
+                    return web.json_response({
+                        'error': '上下文和待总结内容不能为空'
+                    }, status=400)
+
+                # 构建总结prompt（新版）
+                if custom_prompt:
+                    prompt = f"""{custom_prompt}
 
 【上下文信息】（历史聊天记录作为背景）：
 {context_text}
 
 【需要总结的聊天记录】：
-{content_text}
-
-请根据上下文信息和提供的prompt要求，对需要总结的聊天记录进行分析总结。"""
-            else:
-                # 使用默认prompt
-                prompt = f"""请对以下聊天记录进行详细总结分析。
+{content_text}"""
+                else:
+                    prompt = f"""请对以下聊天记录进行详细总结分析。
 
 【上下文信息】（历史聊天记录作为背景）：
 {context_text}
@@ -944,7 +973,6 @@ def create_app():
 
 【分析要求】
 请结合上下文信息，对需要总结的聊天记录进行以下几个方面的总结：
-
 1. 核心主题：讨论的主要话题是什么
 2. 关键信息：提取重要的信息点、决策或结论
 3. 用户观点：主要参与者的立场和观点
@@ -953,6 +981,13 @@ def create_app():
 6. 上下文关联：结合历史聊天记录，分析当前对话的背景和延续性
 
 请用清晰、简洁的中文进行总结。"""
+
+            # 调用Claude API进行总结
+            api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+            if not api_key:
+                return web.json_response({
+                    'error': 'API密钥未配置'
+                }, status=500)
 
             async with aiohttp.ClientSession() as session:
                 async with session.post(

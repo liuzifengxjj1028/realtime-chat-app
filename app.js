@@ -1868,308 +1868,191 @@ yizongSubmitBtn.addEventListener('click', async () => {
     }
 });
 
-// ========== AI聊天总结功能（新版本） ==========
-
-// 获取新的DOM元素
-const contextTabText = document.getElementById('context-tab-text');
-const contextTabPdf = document.getElementById('context-tab-pdf');
-const contextTextArea = document.getElementById('context-text-area');
-const contextPdfArea = document.getElementById('context-pdf-area');
-const contextTextInput = document.getElementById('context-text-input');
-const contextPdfInput = document.getElementById('context-pdf-input');
-const contextUploadZone = document.getElementById('context-upload-zone');
-const contextPdfStatus = document.getElementById('context-pdf-status');
-const contextPdfName = document.getElementById('context-pdf-name');
-const contextPdfSize = document.getElementById('context-pdf-size');
-const contextRemovePdfBtn = document.getElementById('context-remove-pdf-btn');
-
-const contentTabText = document.getElementById('content-tab-text');
-const contentTabPdf = document.getElementById('content-tab-pdf');
-const contentTextArea = document.getElementById('content-text-area');
-const contentPdfArea = document.getElementById('content-pdf-area');
-const contentTextInput = document.getElementById('content-text-input');
-const contentPdfInput = document.getElementById('content-pdf-input');
-const contentUploadZone = document.getElementById('content-upload-zone');
-const contentPdfStatus = document.getElementById('content-pdf-status');
-const contentPdfName = document.getElementById('content-pdf-name');
-const contentPdfSize = document.getElementById('content-pdf-size');
-const contentRemovePdfBtn = document.getElementById('content-remove-pdf-btn');
-
-// 存储上传的PDF文件
-let contextPdf = null;
-let contentPdf = null;
-
-// 上下文区域：选项卡切换
-contextTabText.addEventListener('click', () => {
-    contextTabText.style.background = '#6c5ce7';
-    contextTabText.style.color = 'white';
-    contextTabPdf.style.background = '#e0e0e0';
-    contextTabPdf.style.color = '#666';
-    contextTextArea.style.display = 'block';
-    contextPdfArea.style.display = 'none';
-});
-
-contextTabPdf.addEventListener('click', () => {
-    contextTabPdf.style.background = '#6c5ce7';
-    contextTabPdf.style.color = 'white';
-    contextTabText.style.background = '#e0e0e0';
-    contextTabText.style.color = '#666';
-    contextTextArea.style.display = 'none';
-    contextPdfArea.style.display = 'block';
-});
-
-// 待总结内容区域：选项卡切换
-contentTabText.addEventListener('click', () => {
-    contentTabText.style.background = '#f5a623';
-    contentTabText.style.color = 'white';
-    contentTabPdf.style.background = '#e0e0e0';
-    contentTabPdf.style.color = '#666';
-    contentTextArea.style.display = 'block';
-    contentPdfArea.style.display = 'none';
-});
-
-contentTabPdf.addEventListener('click', () => {
-    contentTabPdf.style.background = '#f5a623';
-    contentTabPdf.style.color = 'white';
-    contentTabText.style.background = '#e0e0e0';
-    contentTabText.style.color = '#666';
-    contentTextArea.style.display = 'none';
-    contentPdfArea.style.display = 'block';
-});
-
-// 上下文PDF上传
-contextUploadZone.addEventListener('click', () => {
-    contextPdfInput.click();
-});
-
-contextUploadZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    contextUploadZone.style.borderColor = '#6c5ce7';
-    contextUploadZone.style.background = 'rgba(108, 92, 231, 0.1)';
-});
-
-contextUploadZone.addEventListener('dragleave', () => {
-    contextUploadZone.style.borderColor = '#6c5ce7';
-    contextUploadZone.style.background = 'rgba(108, 92, 231, 0.05)';
-});
-
-contextUploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    contextUploadZone.style.borderColor = '#6c5ce7';
-    contextUploadZone.style.background = 'rgba(108, 92, 231, 0.05)';
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type === 'application/pdf') {
-        handleContextPdfUpload(files[0]);
-    } else {
-        alert('请上传PDF文件');
-    }
-});
-
-contextPdfInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        handleContextPdfUpload(e.target.files[0]);
-    }
-});
-
-function handleContextPdfUpload(file) {
-    contextPdf = file;
-    contextPdfName.textContent = file.name;
-    contextPdfSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
-    contextPdfStatus.style.display = 'block';
-}
-
-contextRemovePdfBtn.addEventListener('click', () => {
-    contextPdf = null;
-    contextPdfInput.value = '';
-    contextPdfStatus.style.display = 'none';
-});
-
-// 待总结内容PDF上传
-contentUploadZone.addEventListener('click', () => {
-    contentPdfInput.click();
-});
-
-contentUploadZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    contentUploadZone.style.borderColor = '#f5a623';
-    contentUploadZone.style.background = 'rgba(245, 166, 35, 0.1)';
-});
-
-contentUploadZone.addEventListener('dragleave', () => {
-    contentUploadZone.style.borderColor = '#f5a623';
-    contentUploadZone.style.background = 'rgba(245, 166, 35, 0.05)';
-});
-
-contentUploadZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    contentUploadZone.style.borderColor = '#f5a623';
-    contentUploadZone.style.background = 'rgba(245, 166, 35, 0.05)';
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type === 'application/pdf') {
-        handleContentPdfUpload(files[0]);
-    } else {
-        alert('请上传PDF文件');
-    }
-});
-
-contentPdfInput.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        handleContentPdfUpload(e.target.files[0]);
-    }
-});
-
-function handleContentPdfUpload(file) {
-    contentPdf = file;
-    contentPdfName.textContent = file.name;
-    contentPdfSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
-    contentPdfStatus.style.display = 'block';
-}
-
-contentRemovePdfBtn.addEventListener('click', () => {
-    contentPdf = null;
-    contentPdfInput.value = '';
-    contentPdfStatus.style.display = 'none';
-});
+// ========== AI聊天总结功能（用户选择+时间范围模式） ==========
 
 // 打开AI总结对话框
 aiSummaryBtn.addEventListener('click', () => {
-    // 重置表单
-    contextTextInput.value = '';
-    contentTextInput.value = '';
-    contextPdf = null;
-    contentPdf = null;
-    contextPdfInput.value = '';
-    contentPdfInput.value = '';
-    contextPdfStatus.style.display = 'none';
-    contentPdfStatus.style.display = 'none';
-    summaryPromptInput.value = '';
+    // 生成用户选择列表
+    userSelectContainer.innerHTML = '';
+
+    // 先添加当前用户自己
+    const selfCheckbox = document.createElement('label');
+    selfCheckbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s; background: #f0f7ff;';
+    selfCheckbox.innerHTML = `
+        <input type="checkbox" value="${currentUser}" style="margin-right: 8px;">
+        <span style="font-size: 14px; color: #333; font-weight: 600;">${currentUser}</span>
+        <span style="font-size: 12px; color: #07c160; margin-left: 8px;">我自己</span>
+    `;
+    selfCheckbox.onmouseover = () => selfCheckbox.style.background = '#e6f3ff';
+    selfCheckbox.onmouseout = () => selfCheckbox.style.background = '#f0f7ff';
+    userSelectContainer.appendChild(selfCheckbox);
+
+    // 添加所有联系人（排除机器人）
+    contacts.forEach((contactInfo, username) => {
+        if (!contactInfo.isBot) {
+            const checkbox = document.createElement('label');
+            checkbox.style.cssText = 'display: block; padding: 8px; cursor: pointer; transition: background 0.2s;';
+            checkbox.innerHTML = `
+                <input type="checkbox" value="${username}" style="margin-right: 8px;">
+                <span style="font-size: 14px; color: #333;">${username}</span>
+                <span style="font-size: 12px; color: #999; margin-left: 8px;">${contactInfo.online ? '在线' : '离线'}</span>
+            `;
+            checkbox.onmouseover = () => checkbox.style.background = '#f0f0f0';
+            checkbox.onmouseout = () => checkbox.style.background = 'transparent';
+            userSelectContainer.appendChild(checkbox);
+        }
+    });
+
+    // 设置默认时间范围（最近7天）
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    summaryEndDate.value = today.toISOString().split('T')[0];
+    summaryStartDate.value = weekAgo.toISOString().split('T')[0];
 
     aiSummaryModal.style.display = 'flex';
+});
+
+// 切换Prompt配置区域
+configSummaryPromptBtn.addEventListener('click', () => {
+    if (summaryPromptConfig.style.display === 'none') {
+        summaryPromptConfig.style.display = 'block';
+        configSummaryPromptBtn.textContent = '⚙️ 隐藏Prompt';
+    } else {
+        summaryPromptConfig.style.display = 'none';
+        configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
+    }
 });
 
 // 关闭对话框
 closeAiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'none';
+    summaryPromptConfig.style.display = 'none';
+    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
 });
 
 cancelAiSummaryBtn.addEventListener('click', () => {
     aiSummaryModal.style.display = 'none';
+    summaryPromptConfig.style.display = 'none';
+    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
 });
 
 // 提交AI总结请求
 submitAiSummaryBtn.addEventListener('click', async () => {
-    // 验证上下文内容：根据当前选项卡验证
-    let contextContent = '';
-    let contextMode = '';
-    if (contextTextArea.style.display === 'block') {
-        // 文本模式
-        contextContent = contextTextInput.value.trim();
-        if (!contextContent) {
-            alert('请输入上下文文本');
-            return;
-        }
-        contextMode = '文本';
-    } else {
-        // PDF模式
-        if (!contextPdf) {
-            alert('请上传上下文PDF文件');
-            return;
-        }
-        contextMode = 'PDF';
+    // 获取选中的用户
+    const selectedUsers = Array.from(userSelectContainer.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+
+    if (selectedUsers.length === 0) {
+        alert('请至少选择一个用户');
+        return;
     }
 
-    // 验证待总结内容：根据当前选项卡验证
-    let contentToSummarize = '';
-    let contentMode = '';
-    if (contentTextArea.style.display === 'block') {
-        // 文本模式
-        contentToSummarize = contentTextInput.value.trim();
-        if (!contentToSummarize) {
-            alert('请输入需要总结的文本');
-            return;
-        }
-        contentMode = '文本';
-    } else {
-        // PDF模式
-        if (!contentPdf) {
-            alert('请上传需要总结的PDF文件');
-            return;
-        }
-        contentMode = 'PDF';
+    if (!summaryStartDate.value || !summaryEndDate.value) {
+        alert('请选择时间范围');
+        return;
     }
 
-    // 获取自定义prompt
+    const startDate = new Date(summaryStartDate.value);
+    const endDate = new Date(summaryEndDate.value);
+    endDate.setHours(23, 59, 59, 999); // 设置为当天结束
+
+    if (startDate > endDate) {
+        alert('开始日期不能晚于结束日期');
+        return;
+    }
+
+    // 收集符合条件的消息
+    const filteredMessages = [];
+
+    messages.forEach((msgList, chatKey) => {
+        msgList.forEach(msg => {
+            const msgDate = new Date(msg.timestamp);
+
+            // 检查是否在时间范围内
+            if (msgDate >= startDate && msgDate <= endDate) {
+                // 检查发送者或接收者是否在选中用户列表中
+                if (selectedUsers.includes(msg.from) || selectedUsers.includes(msg.to)) {
+                    filteredMessages.push(msg);
+                }
+            }
+        });
+    });
+
+    if (filteredMessages.length === 0) {
+        alert('没有找到符合条件的聊天记录');
+        return;
+    }
+
+    // 按时间排序
+    filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+    // 获取自定义prompt（如果有）
     const customPrompt = summaryPromptInput.value.trim();
 
     // 关闭对话框，打开抽屉
     aiSummaryModal.style.display = 'none';
-    showSummaryDrawer(contextContent, contentToSummarize, customPrompt, contextMode, contentMode);
+    summaryPromptConfig.style.display = 'none';
+    configSummaryPromptBtn.textContent = '⚙️ 配置Prompt';
+    showSummaryDrawer(selectedUsers, startDate, endDate, filteredMessages, customPrompt);
 });
 
 // 显示总结抽屉并调用AI
-async function showSummaryDrawer(contextContent, contentToSummarize, customPrompt = '', contextMode = '', contentMode = '') {
+async function showSummaryDrawer(users, startDate, endDate, messages, customPrompt = '') {
     // 显示抽屉和遮罩
     drawerOverlay.style.display = 'block';
     aiSummaryDrawer.style.display = 'flex';
 
-    // 显示输入方式信息
-    const summaryInputInfo = document.getElementById('summary-input-info');
-    summaryInputInfo.textContent = `上下文:${contextMode} + 总结内容:${contentMode}`;
+    // 显示总结信息
+    summaryUsersInfo.textContent = users.join(', ');
+    summaryTimeInfo.textContent = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    summaryCountInfo.textContent = `${messages.length} 条消息`;
 
     // 显示加载状态
     summaryLoading.style.display = 'block';
     summaryResultContent.textContent = '';
 
+    // 准备消息内容
+    const chatContent = messages.map(msg => {
+        const time = new Date(msg.timestamp).toLocaleString();
+        if (msg.content_type === 'image') {
+            return `[${time}] ${msg.from}: [发送了一张图片]`;
+        } else {
+            return `[${time}] ${msg.from}: ${msg.content}`;
+        }
+    }).join('\n');
+
+    // 调用后端API进行总结
     try {
-        // 准备表单数据
-        const formData = new FormData();
-
-        // 添加上下文（只用一种方式）
-        if (contextMode === '文本') {
-            formData.append('context_text', contextContent);
-        } else if (contextMode === 'PDF') {
-            formData.append('context_pdf', contextPdf);
-        }
-
-        // 添加待总结内容（只用一种方式）
-        if (contentMode === '文本') {
-            formData.append('content_text', contentToSummarize);
-        } else if (contentMode === 'PDF') {
-            formData.append('content_pdf', contentPdf);
-        }
-
-        // 添加自定义prompt
-        if (customPrompt) {
-            formData.append('custom_prompt', customPrompt);
-        }
-
-        // 调用后端API进行总结
         const response = await fetch('http://localhost:8080/api/summarize_chat', {
             method: 'POST',
-            body: formData
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                users: users,
+                start_date: startDate.toISOString(),
+                end_date: endDate.toISOString(),
+                chat_content: chatContent,
+                custom_prompt: customPrompt
+            })
         });
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'API请求失败');
-        }
-
         const result = await response.json();
-
-        // 隐藏加载状态，显示结果
         summaryLoading.style.display = 'none';
-        summaryResultContent.textContent = result.summary;
 
+        if (response.ok) {
+            summaryResultContent.textContent = result.summary;
+        } else {
+            summaryResultContent.textContent = '总结失败：' + (result.error || '未知错误');
+        }
     } catch (error) {
-        console.error('AI总结失败:', error);
         summaryLoading.style.display = 'none';
-        summaryResultContent.textContent = '总结失败：' + error.message;
+        summaryResultContent.textContent = '请求失败：' + error.message;
     }
 }
 
 // 关闭抽屉
+
 closeDrawerBtn.addEventListener('click', () => {
     aiSummaryDrawer.style.display = 'none';
     drawerOverlay.style.display = 'none';

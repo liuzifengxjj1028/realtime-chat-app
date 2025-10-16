@@ -1648,112 +1648,57 @@
 
     <!-- AI聊天总结对话框 -->
     <div class="modal" id="ai-summary-modal" style="display: none;">
-        <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h3>🤖 AI聊天总结</h3>
-                <button class="close-btn" id="close-ai-summary-btn">&times;</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="config-summary-prompt-btn" style="padding: 6px 12px; background: #6c5ce7; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px;">⚙️ 配置Prompt</button>
+                    <button class="close-btn" id="close-ai-summary-btn">&times;</button>
+                </div>
             </div>
             <div style="margin-top: 16px;">
-                <!-- 上下文内容区域 -->
-                <div style="margin-bottom: 24px;">
-                    <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #333; font-size: 15px;">
-                        📝 第一部分：上下文内容（历史聊天记录）
+                <!-- Prompt配置区域（默认隐藏） -->
+                <div id="summary-prompt-config" style="display: none; margin-bottom: 20px; padding: 12px; background: #f9f9ff; border: 2px solid #6c5ce7; border-radius: 8px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px;">
+                        总结Prompt：
                     </label>
-                    <div style="background: #f9f9ff; padding: 16px; border-radius: 8px; border: 2px solid #e0e0ff;">
-                        <!-- 选项卡切换 -->
-                        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e0e0ff; padding-bottom: 8px;">
-                            <button id="context-tab-text" class="tab-btn active" style="flex: 1; padding: 10px; border: none; background: #6c5ce7; color: white; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s;">
-                                📄 粘贴文本
-                            </button>
-                            <button id="context-tab-pdf" class="tab-btn" style="flex: 1; padding: 10px; border: none; background: #e0e0e0; color: #666; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s;">
-                                📎 上传PDF
-                            </button>
-                        </div>
-
-                        <!-- 文本输入区域 -->
-                        <div id="context-text-area" style="display: block;">
-                            <textarea id="context-text-input" placeholder="请粘贴历史聊天记录作为上下文..." style="width: 100%; height: 150px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; resize: vertical; line-height: 1.6;"></textarea>
-                        </div>
-
-                        <!-- PDF上传区域 -->
-                        <div id="context-pdf-area" style="display: none;">
-                            <input type="file" id="context-pdf-input" accept=".pdf" style="display: none;">
-                            <div id="context-upload-zone" style="border: 2px dashed #6c5ce7; background: rgba(108, 92, 231, 0.05); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s;">
-                                <div style="font-size: 48px; margin-bottom: 12px;">📎</div>
-                                <div style="font-size: 15px; color: #333; font-weight: 500; margin-bottom: 8px;">点击上传PDF或拖拽文件到此处</div>
-                                <div style="font-size: 13px; color: #999;">支持PDF文档</div>
-                            </div>
-                            <div id="context-pdf-status" style="margin-top: 12px; padding: 12px; background: #f0f7ff; border-radius: 6px; display: none;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <span style="font-size: 14px; color: #333; font-weight: 500;" id="context-pdf-name">文件名.pdf</span>
-                                        <span style="font-size: 12px; color: #999; margin-left: 8px;" id="context-pdf-size">0 KB</span>
-                                    </div>
-                                    <button id="context-remove-pdf-btn" style="background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">删除</button>
-                                </div>
-                            </div>
-                        </div>
+                    <textarea id="summary-prompt-input" placeholder="请输入你希望AI如何总结聊天记录的提示词..." style="width: 100%; height: 150px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px; font-family: 'Courier New', monospace; resize: vertical; line-height: 1.5;"></textarea>
+                    <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                        💡 提示：留空则使用默认的多维度分析提示词
                     </div>
                 </div>
 
-                <!-- 待总结内容区域 -->
-                <div style="margin-bottom: 24px;">
-                    <label style="display: block; margin-bottom: 12px; font-weight: 600; color: #333; font-size: 15px;">
-                        📊 第二部分：需要总结的聊天记录
+                <!-- 用户选择 -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        选择用户：
                     </label>
-                    <div style="background: #fff9f0; padding: 16px; border-radius: 8px; border: 2px solid #ffe0b3;">
-                        <!-- 选项卡切换 -->
-                        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #ffe0b3; padding-bottom: 8px;">
-                            <button id="content-tab-text" class="tab-btn active" style="flex: 1; padding: 10px; border: none; background: #f5a623; color: white; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s;">
-                                📄 粘贴文本
-                            </button>
-                            <button id="content-tab-pdf" class="tab-btn" style="flex: 1; padding: 10px; border: none; background: #e0e0e0; color: #666; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s;">
-                                📎 上传PDF
-                            </button>
-                        </div>
-
-                        <!-- 文本输入区域 -->
-                        <div id="content-text-area" style="display: block;">
-                            <textarea id="content-text-input" placeholder="请粘贴需要总结的聊天记录..." style="width: 100%; height: 150px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; resize: vertical; line-height: 1.6;"></textarea>
-                        </div>
-
-                        <!-- PDF上传区域 -->
-                        <div id="content-pdf-area" style="display: none;">
-                            <input type="file" id="content-pdf-input" accept=".pdf" style="display: none;">
-                            <div id="content-upload-zone" style="border: 2px dashed #f5a623; background: rgba(245, 166, 35, 0.05); border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s;">
-                                <div style="font-size: 48px; margin-bottom: 12px;">📎</div>
-                                <div style="font-size: 15px; color: #333; font-weight: 500; margin-bottom: 8px;">点击上传PDF或拖拽文件到此处</div>
-                                <div style="font-size: 13px; color: #999;">支持PDF文档</div>
-                            </div>
-                            <div id="content-pdf-status" style="margin-top: 12px; padding: 12px; background: #fff9f0; border-radius: 6px; display: none;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <span style="font-size: 14px; color: #333; font-weight: 500;" id="content-pdf-name">文件名.pdf</span>
-                                        <span style="font-size: 12px; color: #999; margin-left: 8px;" id="content-pdf-size">0 KB</span>
-                                    </div>
-                                    <button id="content-remove-pdf-btn" style="background: #ff4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">删除</button>
-                                </div>
-                            </div>
-                        </div>
+                    <div id="user-select-container" style="border: 2px solid #e0e0e0; border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; background: #fafafa;">
+                        <!-- 用户复选框列表将动态生成 -->
                     </div>
                 </div>
 
-                <!-- Prompt配置区域 -->
-                <div style="margin-bottom: 20px; padding: 16px; background: #f0fff4; border: 2px solid #d4edda; border-radius: 8px;">
-                    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333; font-size: 15px;">
-                        ⚙️ 总结Prompt（可选）
+                <!-- 时间段选择 -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        时间段：
                     </label>
-                    <textarea id="summary-prompt-input" placeholder="请输入你希望AI如何总结聊天记录的提示词...(留空使用默认提示词)" style="width: 100%; height: 100px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px; font-family: 'Courier New', monospace; resize: vertical; line-height: 1.5;"></textarea>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="date" id="summary-start-date" style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                        <span style="color: #999;">至</span>
+                        <input type="date" id="summary-end-date" style="flex: 1; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    </div>
                 </div>
 
                 <!-- 操作按钮 -->
                 <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: flex-end;">
-                    <button id="cancel-ai-summary-btn" style="padding: 12px 28px; background: #e0e0e0; color: #333; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 500;">取消</button>
-                    <button id="submit-ai-summary-btn" style="padding: 12px 28px; background: #07c160; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600;">🤖 开始总结</button>
+                    <button id="cancel-ai-summary-btn" style="padding: 10px 24px; background: #e0e0e0; color: #333; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">取消</button>
+                    <button id="submit-ai-summary-btn" style="padding: 10px 24px; background: #07c160; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">📊 开始总结</button>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- AI总结结果抽屉 -->
     <div id="ai-summary-drawer" style="display: none; position: fixed; right: 0; top: 0; width: 500px; height: 100vh; background: white; box-shadow: -4px 0 24px rgba(0,0,0,0.15); z-index: 10000; display: flex; flex-direction: column;">
@@ -1770,7 +1715,9 @@
             <!-- 总结信息 -->
             <div id="summary-info" style="margin-bottom: 20px; padding: 12px; background: #f0f7ff; border-left: 4px solid #07c160; border-radius: 4px;">
                 <div style="font-size: 13px; color: #666; line-height: 1.6;">
-                    <div><strong>输入方式：</strong><span id="summary-input-info">文本/PDF</span></div>
+                    <div><strong>用户：</strong><span id="summary-users-info"></span></div>
+                    <div style="margin-top: 6px;"><strong>时间：</strong><span id="summary-time-info"></span></div>
+                    <div style="margin-top: 6px;"><strong>消息数：</strong><span id="summary-count-info"></span></div>
                 </div>
             </div>
 
