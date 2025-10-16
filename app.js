@@ -2813,6 +2813,7 @@ const videoChatContainer = document.getElementById('video-chat-container');
 const localVideo = document.getElementById('local-video');
 const remoteVideo = document.getElementById('remote-video');
 const endCallBtn = document.getElementById('end-call-btn');
+const videoCloseBtn = document.getElementById('video-close-btn');
 const toggleVideoBtn = document.getElementById('toggle-video-btn');
 const toggleAudioBtn = document.getElementById('toggle-audio-btn');
 const videoInviteModal = document.getElementById('video-invite-modal');
@@ -3016,6 +3017,20 @@ endCallBtn.addEventListener('click', () => {
         from: currentUser,
         to: videoCallTarget
     }));
+});
+
+// 关闭视频（左上角X按钮）
+videoCloseBtn.addEventListener('click', () => {
+    endVideoCall();
+
+    // 通知对方挂断
+    if (videoCallTarget) {
+        ws.send(JSON.stringify({
+            type: 'video_end',
+            from: currentUser,
+            to: videoCallTarget
+        }));
+    }
 });
 
 // 处理对方挂断

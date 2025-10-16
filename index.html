@@ -373,6 +373,33 @@
             opacity: 0.5;
         }
 
+        /* 视频关闭按钮 */
+        .video-close-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 28px;
+            font-weight: 300;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .video-close-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.1);
+        }
+
         /* 视频邀请弹窗 */
         .video-invite-modal {
             position: fixed;
@@ -2021,6 +2048,7 @@
 
     <!-- 视频聊天容器 -->
     <div class="video-chat-container" id="video-chat-container">
+        <button class="video-close-btn" id="video-close-btn" title="关闭">✕</button>
         <div class="video-main">
             <video id="remote-video" autoplay playsinline></video>
             <video id="local-video" autoplay playsinline muted></video>
