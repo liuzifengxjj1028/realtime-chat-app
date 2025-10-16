@@ -245,6 +245,27 @@ function handleMessage(data) {
         case 'group_message_read_update':
             handleGroupMessageReadUpdate(data);
             break;
+        case 'video_invite':
+            handleVideoInvite(data);
+            break;
+        case 'video_accept':
+            handleVideoAccept(data);
+            break;
+        case 'video_reject':
+            handleVideoReject(data);
+            break;
+        case 'video_offer':
+            handleVideoOffer(data);
+            break;
+        case 'video_answer':
+            handleVideoAnswer(data);
+            break;
+        case 'ice_candidate':
+            handleIceCandidate(data);
+            break;
+        case 'video_end':
+            handleVideoEnd(data);
+            break;
     }
 }
 
@@ -397,10 +418,12 @@ function selectContact(username) {
         botSettingsBtn.style.display = 'block';
         botInputArea.style.display = 'block';
         inputArea.style.display = 'none'; // 隐藏普通输入区域
+        videoCallBtn.style.display = 'none'; // 机器人不能视频聊天
     } else {
         botSettingsBtn.style.display = 'none';
         botInputArea.style.display = 'none';
         inputArea.style.display = 'flex'; // 显示普通输入区域
+        videoCallBtn.style.display = 'block'; // 显示视频聊天按钮
     }
 
     // 更新联系人列表样式
@@ -2767,3 +2790,298 @@ window.addEventListener('load', () => {
     // 延迟1秒后获取天气，避免与其他初始化冲突
     setTimeout(initWeather, 1000);
 });
+
+// ==================== 视频聊天功能 ====================
+
+// WebRTC配置
+const iceServers = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
+
+// 视频聊天状态
+let localStream = null;
+let peerConnection = null;
+let videoCallTarget = null; // 当前视频通话的对象
+let isVideoCaller = false; // 是否是发起方
+
+// 获取DOM元素
+const videoCallBtn = document.getElementById('video-call-btn');
+const videoChatContainer = document.getElementById('video-chat-container');
+const localVideo = document.getElementById('local-video');
+const remoteVideo = document.getElementById('remote-video');
+const endCallBtn = document.getElementById('end-call-btn');
+const toggleVideoBtn = document.getElementById('toggle-video-btn');
+const toggleAudioBtn = document.getElementById('toggle-audio-btn');
+const videoInviteModal = document.getElementById('video-invite-modal');
+const callerNameSpan = document.getElementById('caller-name');
+const acceptVideoBtn = document.getElementById('accept-video-btn');
+const rejectVideoBtn = document.getElementById('reject-video-btn');
+
+// 点击视频聊天按钮
+videoCallBtn.addEventListener('click', async () => {
+    if (!currentChatUser) {
+        alert('请先选择一个联系人');
+        return;
+    }
+
+    videoCallTarget = currentChatUser;
+    isVideoCaller = true;
+
+    try {
+        // 获取本地媒体流
+        localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
+
+        localVideo.srcObject = localStream;
+
+        // 发送视频邀请
+        ws.send(JSON.stringify({
+            type: 'video_invite',
+            from: currentUser,
+            to: videoCallTarget
+        }));
+
+        console.log('发送视频邀请给:', videoCallTarget);
+    } catch (error) {
+        console.error('获取媒体设备失败:', error);
+        alert('无法访问摄像头或麦克风，请检查权限设置');
+    }
+});
+
+// 接收到视频邀请
+function handleVideoInvite(data) {
+    videoCallTarget = data.from;
+    isVideoCaller = false;
+
+    callerNameSpan.textContent = data.from;
+    videoInviteModal.classList.add('active');
+}
+
+// 接受视频通话
+acceptVideoBtn.addEventListener('click', async () => {
+    videoInviteModal.classList.remove('active');
+
+    try {
+        // 获取本地媒体流
+        localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
+
+        localVideo.srcObject = localStream;
+
+        // 发送接受信号
+        ws.send(JSON.stringify({
+            type: 'video_accept',
+            from: currentUser,
+            to: videoCallTarget
+        }));
+
+        // 显示视频界面
+        videoChatContainer.classList.add('active');
+
+        console.log('接受视频通话来自:', videoCallTarget);
+    } catch (error) {
+        console.error('获取媒体设备失败:', error);
+        alert('无法访问摄像头或麦克风，请检查权限设置');
+    }
+});
+
+// 拒绝视频通话
+rejectVideoBtn.addEventListener('click', () => {
+    videoInviteModal.classList.remove('active');
+
+    // 发送拒绝信号
+    ws.send(JSON.stringify({
+        type: 'video_reject',
+        from: currentUser,
+        to: videoCallTarget
+    }));
+
+    videoCallTarget = null;
+});
+
+// 接收到视频接受信号
+async function handleVideoAccept(data) {
+    console.log('对方接受了视频通话');
+
+    // 显示视频界面
+    videoChatContainer.classList.add('active');
+
+    // 创建WebRTC连接
+    await createPeerConnection(true); // 发起方创建offer
+}
+
+// 接收到视频拒绝信号
+function handleVideoReject(data) {
+    console.log('对方拒绝了视频通话');
+
+    // 停止本地流
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+
+    // 在聊天窗口显示拒绝消息
+    addSystemMessage(`${videoCallTarget} 拒绝了您的视频通话`);
+
+    videoCallTarget = null;
+    isVideoCaller = false;
+}
+
+// 创建WebRTC连接
+async function createPeerConnection(createOffer) {
+    peerConnection = new RTCPeerConnection(iceServers);
+
+    // 添加本地流到连接
+    localStream.getTracks().forEach(track => {
+        peerConnection.addTrack(track, localStream);
+    });
+
+    // 监听远程流
+    peerConnection.ontrack = (event) => {
+        console.log('接收到远程流');
+        remoteVideo.srcObject = event.streams[0];
+    };
+
+    // 监听ICE候选
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            ws.send(JSON.stringify({
+                type: 'ice_candidate',
+                from: currentUser,
+                to: videoCallTarget,
+                candidate: event.candidate
+            }));
+        }
+    };
+
+    // 如果是发起方，创建offer
+    if (createOffer) {
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+
+        ws.send(JSON.stringify({
+            type: 'video_offer',
+            from: currentUser,
+            to: videoCallTarget,
+            offer: offer
+        }));
+    }
+}
+
+// 处理视频offer
+async function handleVideoOffer(data) {
+    if (!peerConnection) {
+        await createPeerConnection(false);
+    }
+
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+
+    const answer = await peerConnection.createAnswer();
+    await peerConnection.setLocalDescription(answer);
+
+    ws.send(JSON.stringify({
+        type: 'video_answer',
+        from: currentUser,
+        to: videoCallTarget,
+        answer: answer
+    }));
+}
+
+// 处理视频answer
+async function handleVideoAnswer(data) {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+}
+
+// 处理ICE候选
+async function handleIceCandidate(data) {
+    if (peerConnection) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+}
+
+// 挂断视频
+endCallBtn.addEventListener('click', () => {
+    endVideoCall();
+
+    // 通知对方挂断
+    ws.send(JSON.stringify({
+        type: 'video_end',
+        from: currentUser,
+        to: videoCallTarget
+    }));
+});
+
+// 处理对方挂断
+function handleVideoEnd(data) {
+    endVideoCall();
+    addSystemMessage(`${data.from} 已挂断视频通话`);
+}
+
+// 结束视频通话
+function endVideoCall() {
+    // 关闭peer connection
+    if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+    }
+
+    // 停止本地流
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+
+    // 清空视频元素
+    localVideo.srcObject = null;
+    remoteVideo.srcObject = null;
+
+    // 隐藏视频界面
+    videoChatContainer.classList.remove('active');
+
+    // 重置状态
+    videoCallTarget = null;
+    isVideoCaller = false;
+}
+
+// 开关摄像头
+toggleVideoBtn.addEventListener('click', () => {
+    if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            toggleVideoBtn.classList.toggle('disabled');
+        }
+    }
+});
+
+// 开关麦克风
+toggleAudioBtn.addEventListener('click', () => {
+    if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            toggleAudioBtn.classList.toggle('disabled');
+        }
+    }
+});
+
+// 添加系统消息到聊天窗口
+function addSystemMessage(text) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message';
+    messageDiv.style.textAlign = 'center';
+    messageDiv.style.color = '#999';
+    messageDiv.style.fontSize = '12px';
+    messageDiv.style.margin = '10px 0';
+    messageDiv.textContent = text;
+
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}

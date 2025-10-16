@@ -283,6 +283,162 @@
             50% { transform: translateX(10px); }
         }
 
+        /* 视频聊天样式 */
+        .video-chat-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 10000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .video-chat-container.active {
+            display: flex;
+        }
+
+        .video-main {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #remote-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        #local-video {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 3px solid #fff;
+            background: #333;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .video-controls {
+            padding: 20px;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .video-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 24px;
+        }
+
+        .video-btn.end-call {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .video-btn.end-call:hover {
+            background: #c0392b;
+            transform: scale(1.1);
+        }
+
+        .video-btn.toggle {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .video-btn.toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .video-btn.toggle.disabled {
+            background: rgba(255,255,255,0.1);
+            opacity: 0.5;
+        }
+
+        /* 视频邀请弹窗 */
+        .video-invite-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            z-index: 10001;
+            display: none;
+            min-width: 320px;
+            text-align: center;
+        }
+
+        .video-invite-modal.active {
+            display: block;
+        }
+
+        .video-invite-modal h3 {
+            margin: 0 0 10px 0;
+            font-size: 20px;
+            color: #333;
+        }
+
+        .video-invite-modal p {
+            margin: 0 0 20px 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .video-invite-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .video-invite-actions button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .video-invite-actions .accept-btn {
+            background: #07c160;
+            color: white;
+        }
+
+        .video-invite-actions .accept-btn:hover {
+            background: #06ad56;
+        }
+
+        .video-invite-actions .reject-btn {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .video-invite-actions .reject-btn:hover {
+            background: #c0392b;
+        }
+
         .contacts-list {
             flex: 1;
             overflow-y: auto;
@@ -1442,6 +1598,7 @@
                     </button>
                     <h3 id="chat-with-name">选择一个联系人开始聊天</h3>
                     <div style="display: flex; gap: 10px;">
+                        <button id="video-call-btn" style="display: none; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">📹 视频聊天</button>
                         <button id="ai-summary-btn" style="padding: 8px 16px; background: #07c160; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">🤖 AI聊天总结</button>
                         <button id="bot-settings-btn" style="display: none; padding: 8px 16px; background: #6c5ce7; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">⚙️ 设置Prompt</button>
                     </div>
@@ -1861,6 +2018,35 @@
 
     <!-- 抽屉遮罩层 -->
     <div id="drawer-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;"></div>
+
+    <!-- 视频聊天容器 -->
+    <div class="video-chat-container" id="video-chat-container">
+        <div class="video-main">
+            <video id="remote-video" autoplay playsinline></video>
+            <video id="local-video" autoplay playsinline muted></video>
+        </div>
+        <div class="video-controls">
+            <button class="video-btn toggle" id="toggle-video-btn" title="开关摄像头">
+                📹
+            </button>
+            <button class="video-btn toggle" id="toggle-audio-btn" title="开关麦克风">
+                🎤
+            </button>
+            <button class="video-btn end-call" id="end-call-btn" title="挂断">
+                📞
+            </button>
+        </div>
+    </div>
+
+    <!-- 视频邀请弹窗 -->
+    <div class="video-invite-modal" id="video-invite-modal">
+        <h3>📹 视频通话邀请</h3>
+        <p><span id="caller-name"></span> 邀请您进行视频通话</p>
+        <div class="video-invite-actions">
+            <button class="accept-btn" id="accept-video-btn">✅ 接受</button>
+            <button class="reject-btn" id="reject-video-btn">❌ 拒绝</button>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>

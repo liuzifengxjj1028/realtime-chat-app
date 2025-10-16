@@ -203,6 +203,10 @@ async def handle_message(ws, data, current_username):
     elif msg_type == 'mark_group_message_read':
         await handle_mark_group_message_read(data, current_username)
 
+    # 视频聊天信令
+    elif msg_type in ['video_invite', 'video_accept', 'video_reject', 'video_offer', 'video_answer', 'ice_candidate', 'video_end']:
+        await handle_video_signal(data, current_username)
+
 
 async def handle_register(ws, data):
     """处理用户注册"""
@@ -820,6 +824,22 @@ async def handle_mark_group_message_read(data, current_user):
 
             print(f'群消息已读: {current_user} 已读群 {group_id} 的消息 {timestamp}')
             break
+
+
+async def handle_video_signal(data, current_user):
+    """处理视频聊天信令"""
+    msg_type = data.get('type')
+    to_user = data.get('to')
+    from_user = data.get('from')
+
+    # 确保目标用户在线
+    if to_user not in connected_users:
+        print(f'视频信令失败: {to_user} 不在线')
+        return
+
+    # 转发信令给目标用户
+    await connected_users[to_user].send_json(data)
+    print(f'视频信令: {msg_type} from {from_user} to {to_user}')
 
 
 async def index_handler(request):
