@@ -847,10 +847,12 @@ function displayMessage(msg) {
         recallBtn.onclick = () => recallMessage(msg.timestamp);
         timeDiv.appendChild(recallBtn);
 
-        // 如果是群聊消息，显示阅读状态
+        // 显示阅读状态
         if (currentChatType === 'group' && msg.read_by && msg.unread_members) {
+            // 群聊消息：显示已读人数
             const readStatusDiv = document.createElement('span');
             readStatusDiv.className = 'read-status';
+            readStatusDiv.setAttribute('data-timestamp', msg.timestamp);
             readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 13px; color: #ffffff; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 10px; cursor: pointer; font-weight: 500;';
 
             const readByCount = msg.read_by.length;
@@ -878,6 +880,20 @@ function displayMessage(msg) {
                     showReadDetail(msg); // 降级处理
                 }
             };
+
+            timeDiv.appendChild(readStatusDiv);
+        } else if (currentChatType === 'user') {
+            // 单聊消息：显示已读打勾
+            const readStatusDiv = document.createElement('span');
+            readStatusDiv.className = 'read-status-single';
+            readStatusDiv.setAttribute('data-timestamp', msg.timestamp);
+            readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 13px; color: #ffffff; font-weight: 500;';
+
+            if (msg.read) {
+                readStatusDiv.innerHTML = '✓';
+            } else {
+                readStatusDiv.innerHTML = '';
+            }
 
             timeDiv.appendChild(readStatusDiv);
         }
@@ -1037,10 +1053,10 @@ function markMessageAsRead(data) {
         }
     });
 
-    // 如果正在查看这个对话，更新UI
+    // 如果正在查看这个对话，更新UI中的已读打勾
     if (currentChatWith === data.user) {
-        document.querySelectorAll('.message.sent .message-content').forEach(content => {
-            content.classList.add('read');
+        document.querySelectorAll('.message.sent .read-status-single').forEach(statusSpan => {
+            statusSpan.innerHTML = '✓';
         });
     }
 }
