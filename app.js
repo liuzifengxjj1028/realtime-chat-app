@@ -887,12 +887,14 @@ function displayMessage(msg) {
             const readStatusDiv = document.createElement('span');
             readStatusDiv.className = 'read-status-single';
             readStatusDiv.setAttribute('data-timestamp', msg.timestamp);
-            readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 13px; color: #ffffff; font-weight: 500;';
+            readStatusDiv.style.cssText = 'margin-left: 8px; font-size: 14px; color: #ffffff; font-weight: bold;';
 
             if (msg.read) {
-                readStatusDiv.innerHTML = '✓';
+                readStatusDiv.innerHTML = '✓✓';
+                readStatusDiv.style.color = '#90ee90'; // 浅绿色表示已读
             } else {
-                readStatusDiv.innerHTML = '';
+                readStatusDiv.innerHTML = '✓';
+                readStatusDiv.style.color = 'rgba(255,255,255,0.5)'; // 半透明白色表示未读
             }
 
             timeDiv.appendChild(readStatusDiv);
@@ -1056,7 +1058,8 @@ function markMessageAsRead(data) {
     // 如果正在查看这个对话，更新UI中的已读打勾
     if (currentChatWith === data.user) {
         document.querySelectorAll('.message.sent .read-status-single').forEach(statusSpan => {
-            statusSpan.innerHTML = '✓';
+            statusSpan.innerHTML = '✓✓';
+            statusSpan.style.color = '#90ee90'; // 浅绿色表示已读
         });
     }
 }
