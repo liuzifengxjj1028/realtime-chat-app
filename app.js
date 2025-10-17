@@ -742,13 +742,28 @@ function displayMessage(msg) {
     messageDiv.className = `message ${msg.from === currentUser ? 'sent' : 'received'}`;
     messageDiv.dataset.timestamp = msg.timestamp;
 
-    // 如果不是自己发的消息且不是撤回通知，显示发送者名字
+    // 如果不是自己发的消息且不是撤回通知，显示发送者名字和位置
     if (msg.from !== currentUser && msg.content_type !== 'recall_notice') {
         const senderName = document.createElement('div');
         senderName.className = 'message-sender';
-        senderName.textContent = msg.from;
-        senderName.style.fontSize = '24px';
-        senderName.style.color = '#666';
+
+        // 显示用户名
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = msg.from;
+        nameSpan.style.fontSize = '14px';
+        nameSpan.style.color = '#666';
+        senderName.appendChild(nameSpan);
+
+        // 显示位置（如果有）
+        if (msg.location) {
+            const locationSpan = document.createElement('span');
+            locationSpan.textContent = ` "${msg.location}"`;
+            locationSpan.style.fontSize = '12px';
+            locationSpan.style.color = '#999';
+            locationSpan.style.marginLeft = '4px';
+            senderName.appendChild(locationSpan);
+        }
+
         senderName.style.marginBottom = '4px';
         messageDiv.appendChild(senderName);
     }

@@ -35,6 +35,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # 存储连接的用户
 connected_users = {}  # {username: websocket}
 user_ids = {}  # {username: userId} - 跟踪用户ID
+user_locations = {}  # {username: location_string} - 存储用户地理位置
 # 存储消息（持久化存储）
 messages_store = {}  # {chat_key: [messages]}
 # 存储群组
@@ -137,6 +138,36 @@ def get_chat_key(user1, user2):
     return '_'.join(sorted([user1, user2]))
 
 
+async def get_location_from_ip(ip):
+    """通过IP获取地理位置"""
+    try:
+        # 使用免费的ip-api.com服务（无需API key，但有限制：每分钟45请求）
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f'http://ip-api.com/json/{ip}?lang=zh-CN&fields=country,regionName,city,status,message') as response:
+                data = await response.json()
+
+                if data.get('status') == 'success':
+                    country = data.get('country', '')
+                    region = data.get('regionName', '')
+                    city = data.get('city', '')
+
+                    # 组合位置信息
+                    location_parts = []
+                    if country:
+                        location_parts.append(country)
+                    if region and region != city:  # 避免重复
+                        location_parts.append(region)
+                    if city:
+                        location_parts.append(city)
+
+                    return '·'.join(location_parts) if location_parts else '未知位置'
+                else:
+                    return '未知位置'
+    except Exception as e:
+        print(f'获取地理位置失败: {e}')
+        return '未知位置'
+
+
 async def websocket_handler(request):
     """WebSocket 连接处理"""
     ws = web.WebSocketResponse()
@@ -149,7 +180,7 @@ async def websocket_handler(request):
             if msg.type == web.WSMsgType.TEXT:
                 try:
                     data = json.loads(msg.data)
-                    await handle_message(ws, data, username)
+                    await handle_message(ws, data, username, request)
 
                     # 更新 username（注册后）
                     if data.get('type') == 'register' and username is None:
@@ -178,12 +209,12 @@ async def websocket_handler(request):
     return ws
 
 
-async def handle_message(ws, data, current_username):
+async def handle_message(ws, data, current_username, request=None):
     """处理接收到的消息"""
     msg_type = data.get('type')
 
     if msg_type == 'register':
-        await handle_register(ws, data)
+        await handle_register(ws, data, request)
 
     elif msg_type == 'send_message':
         await handle_send_message(data, current_username)
@@ -208,7 +239,7 @@ async def handle_message(ws, data, current_username):
         await handle_video_signal(data, current_username)
 
 
-async def handle_register(ws, data):
+async def handle_register(ws, data, request=None):
     """处理用户注册"""
     username = data.get('username', '').strip()
     user_id = data.get('userId', '')
@@ -236,6 +267,20 @@ async def handle_register(ws, data):
             'message': '昵称已被使用，请换一个'
         })
         return
+
+    # 获取用户IP并解析地理位置
+    if request:
+        # 获取真实IP（考虑代理和负载均衡）
+        ip = request.headers.get('X-Forwarded-For', '').split(',')[0].strip() or \
+             request.headers.get('X-Real-IP', '') or \
+             request.remote
+
+        # 解析地理位置
+        location = await get_location_from_ip(ip)
+        user_locations[username] = location
+        print(f'用户 {username} 的位置: {location} (IP: {ip})')
+    else:
+        user_locations[username] = '未知位置'
 
     # 注册成功
     connected_users[username] = ws
@@ -464,7 +509,8 @@ async def handle_send_message(data, from_user):
         'content': content,
         'content_type': content_type,
         'timestamp': timestamp,
-        'read': False
+        'read': False,
+        'location': user_locations.get(from_user, '未知位置')  # 添加发送者位置
     }
 
     # 如果有引用消息，添加到消息中
@@ -754,7 +800,8 @@ async def handle_send_group_message(data, from_user):
         'timestamp': timestamp,
         'read': False,
         'read_by': read_by,  # 已读成员列表
-        'unread_members': unread_members  # 未读成员列表
+        'unread_members': unread_members,  # 未读成员列表
+        'location': user_locations.get(from_user, '未知位置')  # 添加发送者位置
     }
 
     # 如果有引用消息，添加到消息中
