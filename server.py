@@ -43,7 +43,7 @@ group_counter = 0  # 群组ID计数器
 # 存储离线消息
 offline_messages = {}  # {username: [messages]}
 # 机器人用户
-BOT_USERNAME = '怡总'  # 聊天记录总结机器人
+BOT_USERNAME = 'AI总结Bot'  # 聊天记录总结机器人
 # 存储用户的机器人配置
 bot_configs = {}  # {username: {prompt: str}}
 
@@ -402,7 +402,7 @@ async def handle_bot_message(from_user, content, content_type):
 
     # 检查是否是帮助命令
     if content == '/help' or content == '帮助':
-        return """📖 怡总使用说明：
+        return """📖 AI总结Bot 使用说明：
 
 1. **设置总结Prompt**：
    点击右上角"⚙️ 设置Prompt"按钮，或发送命令：

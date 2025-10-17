@@ -214,7 +214,7 @@ function handleMessage(data) {
             break;
         case 'new_message':
             // 如果是机器人回复，显示在结果区域
-            if (data.from === '怡总' && currentChatWith === '怡总') {
+            if (data.from === 'AI总结Bot' && currentChatWith === 'AI总结Bot') {
                 botResultContent.textContent = data.content;
                 botResultArea.style.display = 'block';
             } else {
@@ -1284,7 +1284,7 @@ saveBotSettingsBtn.addEventListener('click', () => {
         // 发送设置命令给机器人
         const message = {
             type: 'send_message',
-            to: '怡总',
+            to: 'AI总结Bot',
             content: `/setprompt ${newPrompt}`,
             content_type: 'text',
             timestamp: Date.now()
@@ -1665,7 +1665,7 @@ window.addEventListener('load', () => {
     }
 });
 
-// ============ 怡总机器人双输入模式功能 ============
+// ============ AI总结Bot机器人双输入模式功能 ============
 
 // 获取所有新的元素
 const yizongContextTabText = document.getElementById('yizong-context-tab-text');
