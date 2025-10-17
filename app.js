@@ -2660,8 +2660,11 @@ function getWeatherIcon(weather) {
     return '🌤️'; // 默认图标
 }
 
-// 初始化天气功能
-async function initWeather() {
+// 存储当前位置信息，用于定时更新
+let currentWeatherLocation = null;
+
+// 更新天气显示
+async function updateWeatherDisplay(latitude, longitude, isDefault = false) {
     const weatherIcon = document.getElementById('weather-icon');
     const weatherTemp = document.getElementById('weather-temp');
     const weatherDesc = document.getElementById('weather-desc');
@@ -2669,6 +2672,50 @@ async function initWeather() {
     const weatherAdviceText = document.getElementById('weather-advice-text');
     const weatherAdviceIcon = document.querySelector('.weather-advice-icon');
 
+    try {
+        // 调用后端天气API
+        const response = await fetch(
+            `/api/weather?lat=${latitude}&lon=${longitude}`
+        );
+
+        if (!response.ok) {
+            throw new Error('天气API调用失败');
+        }
+
+        const data = await response.json();
+        console.log('天气数据更新:', data);
+
+        // 更新天气信息
+        const temp = data.temp;
+        const weather = data.description;
+        const city = data.city;
+
+        weatherTemp.textContent = `${temp}°`;
+        weatherDesc.textContent = weather;
+        weatherLocation.innerHTML = `📍 ${city}${isDefault ? '（默认）' : ''}`;
+        weatherIcon.textContent = getWeatherIcon(weather);
+
+        // 获取穿衣建议
+        const clothingAdvice = getClothingAdvice(temp, weather);
+        weatherAdviceText.textContent = clothingAdvice.advice;
+        weatherAdviceIcon.textContent = clothingAdvice.icon;
+
+        // 添加天气动画效果
+        if (weather.includes('雨')) {
+            addRainAnimation();
+        } else if (weather.includes('雪')) {
+            addSnowAnimation();
+        }
+
+    } catch (error) {
+        console.error('获取天气失败:', error);
+        weatherDesc.textContent = '天气获取失败';
+        weatherAdviceText.textContent = '无法获取穿衣建议';
+    }
+}
+
+// 初始化天气功能
+async function initWeather() {
     // 使用浏览器地理定位API
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
@@ -2676,46 +2723,11 @@ async function initWeather() {
                 const { latitude, longitude } = position.coords;
                 console.log('获取到位置:', latitude, longitude);
 
-                try {
-                    // 调用后端天气API
-                    const response = await fetch(
-                        `/api/weather?lat=${latitude}&lon=${longitude}`
-                    );
+                // 保存位置信息
+                currentWeatherLocation = { latitude, longitude, isDefault: false };
 
-                    if (!response.ok) {
-                        throw new Error('天气API调用失败');
-                    }
-
-                    const data = await response.json();
-                    console.log('天气数据:', data);
-
-                    // 更新天气信息
-                    const temp = data.temp;
-                    const weather = data.description;
-                    const city = data.city;
-
-                    weatherTemp.textContent = `${temp}°`;
-                    weatherDesc.textContent = weather;
-                    weatherLocation.innerHTML = `📍 ${city}`;
-                    weatherIcon.textContent = getWeatherIcon(weather);
-
-                    // 获取穿衣建议
-                    const clothingAdvice = getClothingAdvice(temp, weather);
-                    weatherAdviceText.textContent = clothingAdvice.advice;
-                    weatherAdviceIcon.textContent = clothingAdvice.icon;
-
-                    // 添加天气动画效果
-                    if (weather.includes('雨')) {
-                        addRainAnimation();
-                    } else if (weather.includes('雪')) {
-                        addSnowAnimation();
-                    }
-
-                } catch (error) {
-                    console.error('获取天气失败:', error);
-                    weatherDesc.textContent = '天气获取失败';
-                    weatherAdviceText.textContent = '无法获取穿衣建议';
-                }
+                // 首次更新天气
+                await updateWeatherDisplay(latitude, longitude, false);
             },
             (error) => {
                 console.error('定位失败:', error);
@@ -2731,41 +2743,15 @@ async function initWeather() {
 
 // 使用默认天气（定位失败时）
 async function useDefaultWeather() {
-    const weatherIcon = document.getElementById('weather-icon');
-    const weatherTemp = document.getElementById('weather-temp');
-    const weatherDesc = document.getElementById('weather-desc');
-    const weatherLocation = document.getElementById('weather-location');
-    const weatherAdviceText = document.getElementById('weather-advice-text');
-    const weatherAdviceIcon = document.querySelector('.weather-advice-icon');
+    // 北京的经纬度
+    const latitude = 39.9042;
+    const longitude = 116.4074;
 
-    try {
-        // 使用北京作为默认城市
-        const apiKey = '6bdeb85c8f5e8b54ce66476a0aa82ffb';
-        const response = await fetch(
-            `https://api.openweathermap.org/data/2.5/weather?q=Beijing&units=metric&lang=zh_cn&appid=${apiKey}`
-        );
+    // 保存默认位置信息
+    currentWeatherLocation = { latitude, longitude, isDefault: true };
 
-        const data = await response.json();
-
-        const temp = Math.round(data.main.temp);
-        const weather = data.weather[0].description;
-
-        weatherTemp.textContent = `${temp}°`;
-        weatherDesc.textContent = weather;
-        weatherLocation.innerHTML = `📍 北京（默认）`;
-        weatherIcon.textContent = getWeatherIcon(weather);
-
-        const clothingAdvice = getClothingAdvice(temp, weather);
-        weatherAdviceText.textContent = clothingAdvice.advice;
-        weatherAdviceIcon.textContent = clothingAdvice.icon;
-
-    } catch (error) {
-        console.error('获取默认天气失败:', error);
-        weatherTemp.textContent = '22°';
-        weatherDesc.textContent = '晴天';
-        weatherLocation.innerHTML = `📍 位置未知`;
-        weatherAdviceText.textContent = '天气舒适，适合外出';
-    }
+    // 更新天气显示
+    await updateWeatherDisplay(latitude, longitude, true);
 }
 
 // 添加雨滴动画
@@ -2798,10 +2784,29 @@ function addSnowAnimation() {
     }
 }
 
+// 定时刷新天气
+function startWeatherAutoRefresh() {
+    // 每30分钟更新一次天气（30 * 60 * 1000 = 1800000毫秒）
+    setInterval(() => {
+        if (currentWeatherLocation) {
+            console.log('定时更新天气...');
+            updateWeatherDisplay(
+                currentWeatherLocation.latitude,
+                currentWeatherLocation.longitude,
+                currentWeatherLocation.isDefault
+            );
+        }
+    }, 1800000); // 30分钟
+}
+
 // 在页面加载完成后初始化天气
 window.addEventListener('load', () => {
     // 延迟1秒后获取天气，避免与其他初始化冲突
-    setTimeout(initWeather, 1000);
+    setTimeout(() => {
+        initWeather();
+        // 启动定时更新
+        startWeatherAutoRefresh();
+    }, 1000);
 });
 
 // ==================== 视频聊天功能 ====================
