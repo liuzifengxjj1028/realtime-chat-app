@@ -219,12 +219,24 @@ async def websocket_handler(request):
 
         if battle_username_to_remove:
             del battle_3d_players[battle_username_to_remove]
+            # 清理积分
+            if battle_username_to_remove in battle_3d_scores:
+                del battle_3d_scores[battle_username_to_remove]
             # 通知其他3D玩家
             for player_name, player_data in battle_3d_players.items():
                 try:
                     await player_data['websocket'].send_json({
                         'type': '3d_battle_player_left',
                         'username': battle_username_to_remove
+                    })
+                except:
+                    pass
+            # 广播更新后的积分榜
+            for player_name, player_data in battle_3d_players.items():
+                try:
+                    await player_data['websocket'].send_json({
+                        'type': '3d_battle_score_update',
+                        'scores': battle_3d_scores
                     })
                 except:
                     pass

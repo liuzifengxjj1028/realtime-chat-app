@@ -393,7 +393,20 @@
 
     <script>
         // 获取当前用户信息
-        const currentUser = localStorage.getItem('username') || '访客' + Math.floor(Math.random() * 1000);
+        let currentUser = localStorage.getItem('username');
+
+        // 如果没有登录，生成并保存持久化的访客ID
+        if (!currentUser || currentUser.trim() === '') {
+            // 检查是否已有临时访客ID
+            let guestId = localStorage.getItem('guestId');
+            if (!guestId) {
+                // 生成新的访客ID
+                guestId = 'Guest_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('guestId', guestId);
+            }
+            currentUser = guestId;
+        }
+
         document.getElementById('user-info').textContent = `玩家: ${currentUser}`;
 
         // WebSocket连接
