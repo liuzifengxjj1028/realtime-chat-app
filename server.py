@@ -47,6 +47,10 @@ offline_messages = {}  # {username: [messages]}
 BOT_USERNAME = 'AI总结Bot'  # 聊天记录总结机器人
 # 存储用户的机器人配置
 bot_configs = {}  # {username: {prompt: str}}
+# 3D战场玩家
+battle_3d_players = {}  # {username: {position: {x, y, z}, websocket}}
+# 3D战场积分
+battle_3d_scores = {}  # {username: score}
 
 # 加载持久化数据
 def load_data():
@@ -206,6 +210,26 @@ async def websocket_handler(request):
             }, exclude=username)
             print(f'用户离线: {username}')
 
+        # 清理3D战场玩家（通过WebSocket对象查找）
+        battle_username_to_remove = None
+        for battle_user, battle_data in battle_3d_players.items():
+            if battle_data['websocket'] == ws:
+                battle_username_to_remove = battle_user
+                break
+
+        if battle_username_to_remove:
+            del battle_3d_players[battle_username_to_remove]
+            # 通知其他3D玩家
+            for player_name, player_data in battle_3d_players.items():
+                try:
+                    await player_data['websocket'].send_json({
+                        'type': '3d_battle_player_left',
+                        'username': battle_username_to_remove
+                    })
+                except:
+                    pass
+            print(f'3D战场: {battle_username_to_remove} 断开连接')
+
     return ws
 
 
@@ -215,6 +239,13 @@ async def handle_message(ws, data, current_username, request=None):
 
     if msg_type == 'register':
         await handle_register(ws, data, request)
+
+    # 3D战场消息（不需要注册就可以使用）
+    elif msg_type in ['3d_battle_join', '3d_battle_leave', '3d_battle_move', '3d_battle_attack', '3d_battle_chat']:
+        battle_username = data.get('username')
+        print(f'收到3D战场消息: {msg_type} from {battle_username}')
+        await handle_3d_battle_message(data, battle_username, ws)
+        return  # 提前返回，不需要检查current_username
 
     elif msg_type == 'send_message':
         await handle_send_message(data, current_username)
@@ -952,6 +983,134 @@ async def handle_video_signal(data, current_user):
     # 转发信令给目标用户
     await connected_users[to_user].send_json(data)
     print(f'视频信令: {msg_type} from {from_user} to {to_user}')
+
+
+async def handle_3d_battle_message(data, current_user, ws):
+    """处理3D战场消息"""
+    msg_type = data.get('type')
+    username = data.get('username', current_user)
+
+    if msg_type == '3d_battle_join':
+        # 玩家加入战场
+        position = data.get('position', {'x': 0, 'y': 0, 'z': 0})
+        battle_3d_players[username] = {
+            'position': position,
+            'websocket': ws
+        }
+
+        # 初始化积分
+        if username not in battle_3d_scores:
+            battle_3d_scores[username] = 0
+
+        # 通知所有其他玩家
+        for player_name, player_data in battle_3d_players.items():
+            if player_name != username:
+                await player_data['websocket'].send_json({
+                    'type': '3d_battle_player_joined',
+                    'username': username,
+                    'position': position
+                })
+
+        # 发送当前玩家列表给新加入的玩家
+        players_list = [
+            {'username': name, 'position': pdata['position']}
+            for name, pdata in battle_3d_players.items()
+            if name != username
+        ]
+        await ws.send_json({
+            'type': '3d_battle_players_list',
+            'players': players_list
+        })
+
+        # 发送积分榜给新玩家
+        await ws.send_json({
+            'type': '3d_battle_score_update',
+            'scores': battle_3d_scores
+        })
+
+        print(f'3D战场: {username} 加入，当前玩家数: {len(battle_3d_players)}')
+
+    elif msg_type == '3d_battle_leave':
+        # 玩家离开战场
+        if username in battle_3d_players:
+            del battle_3d_players[username]
+
+            # 通知所有其他玩家
+            for player_name, player_data in battle_3d_players.items():
+                await player_data['websocket'].send_json({
+                    'type': '3d_battle_player_left',
+                    'username': username
+                })
+
+            print(f'3D战场: {username} 离开，当前玩家数: {len(battle_3d_players)}')
+
+    elif msg_type == '3d_battle_move':
+        # 玩家移动
+        position = data.get('position', {'x': 0, 'y': 0, 'z': 0})
+
+        if username in battle_3d_players:
+            battle_3d_players[username]['position'] = position
+
+            # 广播给所有其他玩家
+            for player_name, player_data in battle_3d_players.items():
+                if player_name != username:
+                    await player_data['websocket'].send_json({
+                        'type': '3d_battle_move',
+                        'username': username,
+                        'position': position
+                    })
+
+    elif msg_type == '3d_battle_attack':
+        # 玩家攻击
+        position = data.get('position', {'x': 0, 'y': 0, 'z': 0})
+        hit_players = data.get('hitPlayers', [])
+
+        # 广播攻击动作给所有其他玩家
+        for player_name, player_data in battle_3d_players.items():
+            if player_name != username:
+                await player_data['websocket'].send_json({
+                    'type': '3d_battle_attack',
+                    'username': username,
+                    'position': position,
+                    'hitPlayers': hit_players
+                })
+
+        # 单独通知每个被击中的玩家并更新积分
+        for hit_username in hit_players:
+            if hit_username in battle_3d_players:
+                # 更新积分：攻击者+1，被击中者-1
+                if username in battle_3d_scores:
+                    battle_3d_scores[username] += 1
+                if hit_username in battle_3d_scores:
+                    battle_3d_scores[hit_username] -= 1
+
+                # 通知所有玩家这个人被击中了（用于显示其他人的被击中动画）
+                for player_name, player_data in battle_3d_players.items():
+                    await player_data['websocket'].send_json({
+                        'type': '3d_battle_hit',
+                        'attacker': username,
+                        'hitUsername': hit_username
+                    })
+
+        # 如果有人被击中，广播积分更新
+        if hit_players:
+            for player_name, player_data in battle_3d_players.items():
+                await player_data['websocket'].send_json({
+                    'type': '3d_battle_score_update',
+                    'scores': battle_3d_scores
+                })
+
+    elif msg_type == '3d_battle_chat':
+        # 聊天消息
+        message = data.get('message', '')
+
+        # 广播给所有玩家（包括自己）
+        for player_name, player_data in battle_3d_players.items():
+            await player_data['websocket'].send_json({
+                'type': '3d_battle_chat',
+                'username': username,
+                'message': message
+            })
 
 
 async def index_handler(request):

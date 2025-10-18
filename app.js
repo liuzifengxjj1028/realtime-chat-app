@@ -1671,6 +1671,14 @@ function sendMessageWithGroup() {
 // 替换sendMessage函数以支持群聊
 sendMessage = sendMessageWithGroup;
 
+// 3D群殴按钮
+const battle3DBtn = document.getElementById('battle-3d-btn');
+if (battle3DBtn) {
+    battle3DBtn.addEventListener('click', () => {
+        window.open('/3d-battle.html', '_blank');
+    });
+}
+
 // 页面加载时的初始化
 window.addEventListener('load', () => {
     connectWebSocket();

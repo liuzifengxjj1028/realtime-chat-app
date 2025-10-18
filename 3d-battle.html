@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D群殴 - 实时对战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #canvas-3d {
+            display: block;
+        }
+
+        /* 顶部信息栏 */
+        #top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        #user-info {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        #online-count {
+            font-size: 14px;
+            color: #4ade80;
+        }
+
+        #back-btn {
+            padding: 8px 20px;
+            background: #ef4444;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        #back-btn:hover {
+            background: #dc2626;
+            transform: scale(1.05);
+        }
+
+        /* 排行榜 */
+        #leaderboard {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            min-width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        #leaderboard h3 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #fbbf24;
+            text-align: center;
+            border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            margin: 4px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .leaderboard-item.rank-1 {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.1));
+            border: 1px solid rgba(255, 215, 0, 0.5);
+        }
+
+        .leaderboard-item.rank-2 {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.3), rgba(192, 192, 192, 0.1));
+            border: 1px solid rgba(192, 192, 192, 0.5);
+        }
+
+        .leaderboard-item.rank-3 {
+            background: linear-gradient(135deg, rgba(205, 127, 50, 0.3), rgba(205, 127, 50, 0.1));
+            border: 1px solid rgba(205, 127, 50, 0.5);
+        }
+
+        .leaderboard-rank {
+            font-weight: bold;
+            font-size: 16px;
+            margin-right: 10px;
+            min-width: 30px;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .leaderboard-score {
+            font-weight: bold;
+            font-size: 16px;
+            color: #4ade80;
+            margin-left: 10px;
+        }
+
+        .leaderboard-score.negative {
+            color: #ef4444;
+        }
+
+        /* 控制说明 */
+        #controls-help {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            max-width: 300px;
+        }
+
+        #controls-help h3 {
+            margin-bottom: 12px;
+            font-size: 18px;
+            color: #4ade80;
+        }
+
+        #controls-help ul {
+            list-style: none;
+        }
+
+        #controls-help li {
+            margin: 8px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+
+        #controls-help kbd {
+            display: inline-block;
+            padding: 4px 8px;
+            background: #374151;
+            border-radius: 4px;
+            margin-right: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        /* 聊天窗口 */
+        #chat-box {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-header {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            color: white;
+            font-size: 14px;
+        }
+
+        #chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            word-wrap: break-word;
+        }
+
+        .chat-message .username {
+            font-weight: 600;
+            color: #4ade80;
+            margin-right: 8px;
+        }
+
+        .system-message {
+            color: #fbbf24;
+            font-style: italic;
+            text-align: center;
+        }
+
+        #chat-input-container {
+            padding: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+
+        #chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        #chat-send-btn {
+            padding: 10px 20px;
+            background: #4ade80;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        #chat-send-btn:hover {
+            background: #22c55e;
+        }
+
+        /* 名字标签样式 */
+        .name-label {
+            position: absolute;
+            pointer-events: none;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        /* 加载遮罩 */
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            color: white;
+        }
+
+        #loading h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 气泡动画 */
+        @keyframes bubblePop {
+            0% { transform: translate(-50%, -100%) scale(0.5); opacity: 0; }
+            100% { transform: translate(-50%, -100%) scale(1); opacity: 1; }
+        }
+
+        @keyframes bubbleFade {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- 加载遮罩 -->
+        <div id="loading">
+            <h2>加载3D世界中...</h2>
+            <div class="spinner"></div>
+        </div>
+
+        <!-- 顶部信息栏 -->
+        <div id="top-bar">
+            <div>
+                <div id="user-info">欢迎来到3D群殴</div>
+                <div id="online-count">在线人数: 1</div>
+            </div>
+            <button id="back-btn" onclick="goBack()">返回大厅</button>
+        </div>
+
+        <!-- 排行榜 -->
+        <div id="leaderboard">
+            <h3>🏆 排行榜</h3>
+            <div id="leaderboard-list"></div>
+        </div>
+
+        <!-- 控制说明 -->
+        <div id="controls-help">
+            <h3>🎮 操作说明</h3>
+            <ul>
+                <li><kbd>↑</kbd> 向前移动</li>
+                <li><kbd>↓</kbd> 向后移动</li>
+                <li><kbd>←</kbd> 向左移动</li>
+                <li><kbd>→</kbd> 向右移动</li>
+                <li><kbd>D</kbd> 挥舞棒子攻击</li>
+                <li><kbd>鼠标</kbd> 旋转视角</li>
+            </ul>
+        </div>
+
+        <!-- 聊天窗口 -->
+        <div id="chat-box">
+            <div id="chat-header">💬 实时聊天</div>
+            <div id="chat-messages"></div>
+            <div id="chat-input-container">
+                <input type="text" id="chat-input" placeholder="输入消息..." maxlength="200">
+                <button id="chat-send-btn">发送</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // 获取当前用户信息
+        const currentUser = localStorage.getItem('username') || '访客' + Math.floor(Math.random() * 1000);
+        document.getElementById('user-info').textContent = `玩家: ${currentUser}`;
+
+        // WebSocket连接
+        let ws = null;
+        const players = new Map(); // 存储其他玩家 {username: {mesh, stick, position, rotation}}
+        const scores = new Map(); // 存储所有玩家的积分 {username: score}
+
+        // 根据用户名生成唯一颜色
+        function getUserColor(username) {
+            let hash = 0;
+            for (let i = 0; i < username.length; i++) {
+                hash = username.charCodeAt(i) + ((hash << 5) - hash);
+            }
+
+            // 生成鲜艳的颜色（避免太暗或太浅）
+            const hue = Math.abs(hash % 360);
+            const saturation = 70 + (Math.abs(hash) % 20); // 70-90%
+            const lightness = 45 + (Math.abs(hash >> 8) % 15); // 45-60%
+
+            // HSL转RGB
+            const h = hue / 360;
+            const s = saturation / 100;
+            const l = lightness / 100;
+
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+
+            const toHex = x => {
+                const hex = Math.round(x * 255).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+
+            return parseInt('0x' + toHex(r) + toHex(g) + toHex(b));
+        }
+
+        // Three.js场景设置
+        let scene, camera, renderer, myCharacter, myStick;
+        let moveState = { forward: false, backward: false, left: false, right: false };
+        let isAttacking = false;
+        const moveSpeed = 0.15;
+        const attackCooldown = 500; // 攻击冷却时间(毫秒)
+        let lastAttackTime = 0;
+        const chatBubbles = new Map(); // 存储聊天气泡 {username: {element, timeout}}
+
+        // 初始化3D场景
+        function init3DScene() {
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // 天空蓝
+            scene.fog = new THREE.Fog(0x87CEEB, 10, 50);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            renderer.domElement.id = 'canvas-3d';
+
+            // 添加环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            // 添加方向光（太阳光）
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -20;
+            directionalLight.shadow.camera.right = 20;
+            directionalLight.shadow.camera.top = 20;
+            directionalLight.shadow.camera.bottom = -20;
+            scene.add(directionalLight);
+
+            // 创建地面
+            const groundGeometry = new THREE.PlaneGeometry(50, 50);
+            const groundMaterial = new THREE.MeshStandardMaterial({
+                color: 0x90EE90,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // 添加网格辅助线
+            const gridHelper = new THREE.GridHelper(50, 50, 0x000000, 0x000000);
+            gridHelper.material.opacity = 0.2;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+
+            // 创建我的角色
+            createMyCharacter();
+
+            // 窗口大小调整
+            window.addEventListener('resize', onWindowResize);
+
+            // 键盘控制
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+
+            // 隐藏加载遮罩
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 1000);
+
+            // 开始动画循环
+            animate();
+        }
+
+        // 创建我的角色（小人+棒子）
+        function createMyCharacter() {
+            const group = new THREE.Group();
+
+            // 根据用户名生成颜色
+            const userColor = getUserColor(currentUser);
+
+            // 身体（圆柱体）
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 16);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: userColor });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.6;
+            body.castShadow = true;
+            group.add(body);
+
+            // 头部（球体）
+            const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xfbbf24 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.5;
+            head.castShadow = true;
+            group.add(head);
+
+            // 眼睛
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.12, 1.55, 0.3);
+            group.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.12, 1.55, 0.3);
+            group.add(rightEye);
+
+            // 手臂
+            const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: userColor });
+
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.45, 0.8, 0);
+            leftArm.rotation.z = Math.PI / 6;
+            leftArm.castShadow = true;
+            group.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.45, 0.8, 0);
+            rightArm.rotation.z = -Math.PI / 6;
+            rightArm.castShadow = true;
+            group.add(rightArm);
+
+            // 创建棒子
+            const stickGroup = new THREE.Group();
+            const stickGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8);
+            const stickMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            const stick = new THREE.Mesh(stickGeometry, stickMaterial);
+            stick.castShadow = true;
+            stickGroup.add(stick);
+
+            // 棒子顶部（攻击部分）
+            const stickTopGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const stickTopMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            const stickTop = new THREE.Mesh(stickTopGeometry, stickTopMaterial);
+            stickTop.position.y = 0.75;
+            stickTop.castShadow = true;
+            stickGroup.add(stickTop);
+
+            // 将棒子附加到右手
+            stickGroup.position.set(0.6, 0.8, 0);
+            stickGroup.rotation.z = -Math.PI / 2;
+            group.add(stickGroup);
+
+            myCharacter = group;
+            myStick = stickGroup;
+            scene.add(myCharacter);
+        }
+
+        // 创建其他玩家
+        function createOtherPlayer(username) {
+            const group = new THREE.Group();
+
+            // 根据用户名生成唯一颜色
+            const playerColor = getUserColor(username);
+
+            // 身体
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 16);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: playerColor });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 0.6;
+            body.castShadow = true;
+            group.add(body);
+
+            // 头部
+            const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0xfbbf24 });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.position.y = 1.5;
+            head.castShadow = true;
+            group.add(head);
+
+            // 眼睛
+            const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+            const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+            const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            leftEye.position.set(-0.12, 1.55, 0.3);
+            group.add(leftEye);
+
+            const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            rightEye.position.set(0.12, 1.55, 0.3);
+            group.add(rightEye);
+
+            // 手臂
+            const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8);
+            const armMaterial = new THREE.MeshStandardMaterial({ color: playerColor });
+
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.position.set(-0.45, 0.8, 0);
+            leftArm.rotation.z = Math.PI / 6;
+            leftArm.castShadow = true;
+            group.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.position.set(0.45, 0.8, 0);
+            rightArm.rotation.z = -Math.PI / 6;
+            rightArm.castShadow = true;
+            group.add(rightArm);
+
+            // 创建棒子
+            const stickGroup = new THREE.Group();
+            const stickGeometry = new THREE.CylinderGeometry(0.05, 0.05, 1.5, 8);
+            const stickMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+            const stick = new THREE.Mesh(stickGeometry, stickMaterial);
+            stick.castShadow = true;
+            stickGroup.add(stick);
+
+            // 棒子顶部（攻击部分）
+            const stickTopGeometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const stickTopMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+            const stickTop = new THREE.Mesh(stickTopGeometry, stickTopMaterial);
+            stickTop.position.y = 0.75;
+            stickTop.castShadow = true;
+            stickGroup.add(stickTop);
+
+            // 将棒子附加到右手
+            stickGroup.position.set(0.6, 0.8, 0);
+            stickGroup.rotation.z = -Math.PI / 2;
+            group.add(stickGroup);
+
+            scene.add(group);
+
+            // 返回角色组和棒子的引用
+            return { mesh: group, stick: stickGroup };
+        }
+
+        // 窗口大小调整
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 键盘按下
+        function onKeyDown(event) {
+            switch(event.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    moveState.forward = true;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    moveState.backward = true;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    moveState.left = true;
+                    break;
+                case 'ArrowRight':
+                    moveState.right = true;
+                    break;
+                case 'd':
+                case 'D':
+                    attack();
+                    break;
+            }
+        }
+
+        // 键盘松开
+        function onKeyUp(event) {
+            switch(event.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    moveState.forward = false;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    moveState.backward = false;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    moveState.left = false;
+                    break;
+                case 'ArrowRight':
+                    moveState.right = false;
+                    break;
+            }
+        }
+
+        // 攻击动作
+        function attack() {
+            const now = Date.now();
+            if (now - lastAttackTime < attackCooldown || isAttacking) return;
+
+            isAttacking = true;
+            lastAttackTime = now;
+
+            // 挥舞棒子动画 - 更明显的挥动
+            const originalRotationX = myStick.rotation.x;
+            const originalRotationZ = myStick.rotation.z;
+            const swingDuration = 400;
+            const startTime = now;
+
+            function animateSwing() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / swingDuration, 1);
+
+                if (progress < 0.5) {
+                    // 向前大幅度挥
+                    const swingProgress = progress * 2;
+                    myStick.rotation.x = originalRotationX - (Math.PI * 0.8 * swingProgress);
+                    myStick.rotation.z = originalRotationZ + (Math.PI * 0.3 * swingProgress);
+                } else {
+                    // 快速回到原位
+                    const returnProgress = (progress - 0.5) * 2;
+                    myStick.rotation.x = originalRotationX - (Math.PI * 0.8 * (1 - returnProgress));
+                    myStick.rotation.z = originalRotationZ + (Math.PI * 0.3 * (1 - returnProgress));
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateSwing);
+                } else {
+                    myStick.rotation.x = originalRotationX;
+                    myStick.rotation.z = originalRotationZ;
+                    isAttacking = false;
+                }
+            }
+
+            animateSwing();
+
+            // 显示攻击气泡
+            showChatBubble(currentUser, '💥 攻击！', 1500);
+
+            // 检测击中（攻击范围：前方2单位距离内）
+            const attackRange = 2.5;
+            const hitPlayers = [];
+
+            players.forEach((player, username) => {
+                const distance = Math.sqrt(
+                    Math.pow(player.mesh.position.x - myCharacter.position.x, 2) +
+                    Math.pow(player.mesh.position.z - myCharacter.position.z, 2)
+                );
+
+                if (distance <= attackRange) {
+                    hitPlayers.push(username);
+                }
+            });
+
+            // 发送攻击信号到服务器
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: '3d_battle_attack',
+                    username: currentUser,
+                    position: {
+                        x: myCharacter.position.x,
+                        y: myCharacter.position.y,
+                        z: myCharacter.position.z
+                    },
+                    hitPlayers: hitPlayers
+                }));
+            }
+
+            // 添加聊天消息
+            addChatMessage('system', `${currentUser} 挥舞了棒子！`);
+        }
+
+        // 播放其他玩家的攻击动画
+        function playOtherPlayerAttackAnimation(stick) {
+            if (!stick) return;
+
+            const originalRotationX = stick.rotation.x;
+            const originalRotationZ = stick.rotation.z;
+            const swingDuration = 400;
+            const startTime = Date.now();
+
+            function animateSwing() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / swingDuration, 1);
+
+                if (progress < 0.5) {
+                    // 向前大幅度挥
+                    const swingProgress = progress * 2;
+                    stick.rotation.x = originalRotationX - (Math.PI * 0.8 * swingProgress);
+                    stick.rotation.z = originalRotationZ + (Math.PI * 0.3 * swingProgress);
+                } else {
+                    // 快速回到原位
+                    const returnProgress = (progress - 0.5) * 2;
+                    stick.rotation.x = originalRotationX - (Math.PI * 0.8 * (1 - returnProgress));
+                    stick.rotation.z = originalRotationZ + (Math.PI * 0.3 * (1 - returnProgress));
+                }
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateSwing);
+                } else {
+                    stick.rotation.x = originalRotationX;
+                    stick.rotation.z = originalRotationZ;
+                }
+            }
+
+            animateSwing();
+        }
+
+        // 播放被击中动画
+        function playHitAnimation(characterMesh, username) {
+            if (!characterMesh) return;
+
+            // 显示"啊！"气泡
+            showChatBubble(username, '啊！', 1500);
+
+            // 晃动动画
+            const originalX = characterMesh.position.x;
+            const originalZ = characterMesh.position.z;
+            const shakeDuration = 400;
+            const shakeIntensity = 0.15;
+            const startTime = Date.now();
+
+            function animateShake() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / shakeDuration, 1);
+
+                if (progress < 1) {
+                    // 随机晃动
+                    const shakeAmount = shakeIntensity * (1 - progress);
+                    characterMesh.position.x = originalX + (Math.random() - 0.5) * shakeAmount;
+                    characterMesh.position.z = originalZ + (Math.random() - 0.5) * shakeAmount;
+                    requestAnimationFrame(animateShake);
+                } else {
+                    // 恢复原位
+                    characterMesh.position.x = originalX;
+                    characterMesh.position.z = originalZ;
+                }
+            }
+
+            animateShake();
+
+            // 添加聊天消息
+            addChatMessage('system', `${username} 被击中了！`);
+        }
+
+        // 更新角色位置
+        function updateCharacterPosition() {
+            let moved = false;
+
+            if (moveState.forward) {
+                myCharacter.position.z -= moveSpeed;
+                moved = true;
+            }
+            if (moveState.backward) {
+                myCharacter.position.z += moveSpeed;
+                moved = true;
+            }
+            if (moveState.left) {
+                myCharacter.position.x -= moveSpeed;
+                moved = true;
+            }
+            if (moveState.right) {
+                myCharacter.position.x += moveSpeed;
+                moved = true;
+            }
+
+            // 限制移动范围
+            const limit = 22;
+            myCharacter.position.x = Math.max(-limit, Math.min(limit, myCharacter.position.x));
+            myCharacter.position.z = Math.max(-limit, Math.min(limit, myCharacter.position.z));
+
+            // 相机跟随
+            camera.position.x = myCharacter.position.x;
+            camera.position.z = myCharacter.position.z + 10;
+            camera.position.y = myCharacter.position.y + 5;
+            camera.lookAt(myCharacter.position.x, myCharacter.position.y, myCharacter.position.z);
+
+            // 如果移动了，发送位置更新到服务器
+            if (moved && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: '3d_battle_move',
+                    username: currentUser,
+                    position: {
+                        x: myCharacter.position.x,
+                        y: myCharacter.position.y,
+                        z: myCharacter.position.z
+                    }
+                }));
+            }
+        }
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            updateCharacterPosition();
+            updateChatBubbles();
+            renderer.render(scene, camera);
+        }
+
+        // 显示聊天气泡
+        function showChatBubble(username, message, duration = 3000) {
+            // 如果已有气泡，先清除
+            if (chatBubbles.has(username)) {
+                const oldBubble = chatBubbles.get(username);
+                clearTimeout(oldBubble.timeout);
+                if (oldBubble.element && oldBubble.element.parentNode) {
+                    oldBubble.element.parentNode.removeChild(oldBubble.element);
+                }
+            }
+
+            // 创建新气泡
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-bubble-3d';
+            bubble.textContent = message;
+            bubble.style.cssText = `
+                position: absolute;
+                background: rgba(0, 0, 0, 0.8);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 16px;
+                font-size: 14px;
+                font-weight: 600;
+                white-space: nowrap;
+                pointer-events: none;
+                z-index: 1000;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+                animation: bubblePop 0.2s ease-out;
+            `;
+            document.body.appendChild(bubble);
+
+            // 设置超时自动删除
+            const timeout = setTimeout(() => {
+                if (bubble.parentNode) {
+                    bubble.style.animation = 'bubbleFade 0.3s ease-out';
+                    setTimeout(() => {
+                        if (bubble.parentNode) {
+                            bubble.parentNode.removeChild(bubble);
+                        }
+                    }, 300);
+                }
+                chatBubbles.delete(username);
+            }, duration);
+
+            chatBubbles.set(username, { element: bubble, timeout });
+        }
+
+        // 更新聊天气泡位置（跟随角色头顶）
+        function updateChatBubbles() {
+            chatBubbles.forEach((bubble, username) => {
+                let character;
+                if (username === currentUser) {
+                    character = myCharacter;
+                } else if (players.has(username)) {
+                    character = players.get(username).mesh;
+                }
+
+                if (character && bubble.element) {
+                    // 计算头顶位置
+                    const headPosition = new THREE.Vector3(
+                        character.position.x,
+                        character.position.y + 2.5,
+                        character.position.z
+                    );
+
+                    // 投影到屏幕坐标
+                    const screenPosition = headPosition.project(camera);
+                    const x = (screenPosition.x + 1) / 2 * window.innerWidth;
+                    const y = (-screenPosition.y + 1) / 2 * window.innerHeight;
+
+                    bubble.element.style.left = `${x}px`;
+                    bubble.element.style.top = `${y}px`;
+                    bubble.element.style.transform = 'translate(-50%, -100%)';
+                }
+            });
+        }
+
+        // 聊天功能
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+
+        function addChatMessage(username, message) {
+            const messageDiv = document.createElement('div');
+            if (username === 'system') {
+                messageDiv.className = 'chat-message system-message';
+                messageDiv.textContent = message;
+            } else {
+                messageDiv.className = 'chat-message';
+                messageDiv.innerHTML = `<span class="username">${username}:</span>${message}`;
+            }
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function sendChatMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // 显示自己的聊天气泡
+            showChatBubble(currentUser, message, 3000);
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: '3d_battle_chat',
+                    username: currentUser,
+                    message: message
+                }));
+            }
+
+            chatInput.value = '';
+        }
+
+        chatSendBtn.addEventListener('click', sendChatMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
+        });
+
+        // WebSocket连接
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://localhost:8080/ws`);
+
+            ws.onopen = () => {
+                console.log('WebSocket连接成功');
+                // 加入3D战场
+                ws.send(JSON.stringify({
+                    type: '3d_battle_join',
+                    username: currentUser
+                }));
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                } catch (error) {
+                    console.error('解析消息失败:', error);
+                }
+            };
+
+            ws.onclose = () => {
+                console.log('WebSocket连接断开');
+                addChatMessage('system', '连接断开，请刷新页面重新连接');
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket错误:', error);
+            };
+        }
+
+        // 处理WebSocket消息
+        function handleWebSocketMessage(data) {
+            switch (data.type) {
+                case '3d_battle_player_joined':
+                    // 其他玩家加入
+                    if (data.username !== currentUser && !players.has(data.username)) {
+                        const playerObj = createOtherPlayer(data.username);
+                        players.set(data.username, {
+                            mesh: playerObj.mesh,
+                            stick: playerObj.stick,
+                            position: data.position || { x: 0, y: 0, z: 0 }
+                        });
+                        // 初始化积分
+                        if (!scores.has(data.username)) {
+                            scores.set(data.username, 0);
+                        }
+                        addChatMessage('system', `${data.username} 加入了战场`);
+                        updateOnlineCount();
+                        updateLeaderboard();
+                    }
+                    break;
+
+                case '3d_battle_player_left':
+                    // 玩家离开
+                    if (players.has(data.username)) {
+                        const player = players.get(data.username);
+                        scene.remove(player.mesh);
+                        players.delete(data.username);
+                        scores.delete(data.username);
+                        addChatMessage('system', `${data.username} 离开了战场`);
+                        updateOnlineCount();
+                        updateLeaderboard();
+                    }
+                    break;
+
+                case '3d_battle_move':
+                    // 其他玩家移动
+                    if (data.username !== currentUser && players.has(data.username)) {
+                        const player = players.get(data.username);
+                        player.mesh.position.set(data.position.x, data.position.y, data.position.z);
+                    }
+                    break;
+
+                case '3d_battle_attack':
+                    // 其他玩家攻击
+                    if (data.username !== currentUser) {
+                        showChatBubble(data.username, '💥 攻击！', 1500);
+                        addChatMessage('system', `${data.username} 挥舞了棒子！`);
+
+                        // 播放攻击动画
+                        if (players.has(data.username)) {
+                            const player = players.get(data.username);
+                            playOtherPlayerAttackAnimation(player.stick);
+                        }
+
+                        // 如果我被击中了
+                        if (data.hitPlayers && data.hitPlayers.includes(currentUser)) {
+                            playHitAnimation(myCharacter, currentUser);
+                        }
+                    }
+                    break;
+
+                case '3d_battle_hit':
+                    // 其他玩家被击中
+                    if (data.hitUsername !== currentUser && players.has(data.hitUsername)) {
+                        const hitPlayer = players.get(data.hitUsername);
+                        playHitAnimation(hitPlayer.mesh, data.hitUsername);
+                    }
+                    break;
+
+                case '3d_battle_score_update':
+                    // 积分更新
+                    if (data.scores) {
+                        // 更新所有玩家的积分
+                        scores.clear();
+                        for (const [username, score] of Object.entries(data.scores)) {
+                            scores.set(username, score);
+                        }
+                        updateLeaderboard();
+                    }
+                    break;
+
+                case '3d_battle_chat':
+                    // 聊天消息
+                    if (data.username !== currentUser) {
+                        showChatBubble(data.username, data.message, 3000);
+                    }
+                    addChatMessage(data.username, data.message);
+                    break;
+
+                case '3d_battle_players_list':
+                    // 当前玩家列表
+                    data.players.forEach(player => {
+                        if (player.username !== currentUser && !players.has(player.username)) {
+                            const playerObj = createOtherPlayer(player.username);
+                            playerObj.mesh.position.set(
+                                player.position.x,
+                                player.position.y,
+                                player.position.z
+                            );
+                            players.set(player.username, {
+                                mesh: playerObj.mesh,
+                                stick: playerObj.stick,
+                                position: player.position
+                            });
+                            // 初始化积分
+                            if (!scores.has(player.username)) {
+                                scores.set(player.username, 0);
+                            }
+                        }
+                    });
+                    // 确保自己也在积分列表中
+                    if (!scores.has(currentUser)) {
+                        scores.set(currentUser, 0);
+                    }
+                    updateOnlineCount();
+                    updateLeaderboard();
+                    break;
+            }
+        }
+
+        // 更新在线人数
+        function updateOnlineCount() {
+            const count = players.size + 1; // 加上自己
+            document.getElementById('online-count').textContent = `在线人数: ${count}`;
+        }
+
+        // 更新排行榜
+        function updateLeaderboard() {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '';
+
+            // 转换为数组并排序
+            const sortedScores = Array.from(scores.entries())
+                .sort((a, b) => b[1] - a[1]); // 按分数降序
+
+            sortedScores.forEach((entry, index) => {
+                const [username, score] = entry;
+                const rank = index + 1;
+
+                const item = document.createElement('div');
+                item.className = 'leaderboard-item';
+
+                // 前三名特殊样式
+                if (rank === 1) {
+                    item.classList.add('rank-1');
+                } else if (rank === 2) {
+                    item.classList.add('rank-2');
+                } else if (rank === 3) {
+                    item.classList.add('rank-3');
+                }
+
+                // 排名图标
+                let rankIcon = `${rank}.`;
+                if (rank === 1) rankIcon = '🥇';
+                else if (rank === 2) rankIcon = '🥈';
+                else if (rank === 3) rankIcon = '🥉';
+
+                const rankSpan = document.createElement('span');
+                rankSpan.className = 'leaderboard-rank';
+                rankSpan.textContent = rankIcon;
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'leaderboard-name';
+                nameSpan.textContent = username + (username === currentUser ? ' (你)' : '');
+
+                const scoreSpan = document.createElement('span');
+                scoreSpan.className = 'leaderboard-score';
+                if (score < 0) {
+                    scoreSpan.classList.add('negative');
+                }
+                scoreSpan.textContent = score + '分';
+
+                item.appendChild(rankSpan);
+                item.appendChild(nameSpan);
+                item.appendChild(scoreSpan);
+
+                leaderboardList.appendChild(item);
+            });
+        }
+
+        // 返回大厅
+        function goBack() {
+            if (ws) ws.close();
+            window.location.href = '/';
+        }
+
+        // 初始化
+        window.addEventListener('load', () => {
+            init3DScene();
+            connectWebSocket();
+            addChatMessage('system', '欢迎来到3D群殴世界！');
+            addChatMessage('system', '使用方向键移动，按D键攻击');
+        });
+
+        // 页面关闭时清理
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.send(JSON.stringify({
+                    type: '3d_battle_leave',
+                    username: currentUser
+                }));
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>
