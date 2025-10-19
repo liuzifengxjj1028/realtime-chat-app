@@ -523,8 +523,44 @@ async def handle_bot_message(from_user, content, content_type):
 
     # 处理PDF文件
     elif content_type == 'pdf':
-        # TODO: 实现PDF文件解析
-        return "PDF文件处理功能开发中..."
+        try:
+            import base64
+
+            # PDF内容通常是base64编码的
+            if isinstance(content, str):
+                # 如果是base64字符串，需要解码
+                if content.startswith('data:application/pdf;base64,'):
+                    # 移除data URL前缀
+                    content = content.split(',', 1)[1]
+                pdf_data = base64.b64decode(content)
+            else:
+                # 如果已经是字节数据
+                pdf_data = content
+
+            # 验证PDF文件大小（最大10MB）
+            if len(pdf_data) > 10 * 1024 * 1024:
+                return "❌ PDF文件大小不能超过10MB"
+
+            print(f'[DEBUG] 准备解析PDF文件: {len(pdf_data)} 字节')
+
+            # 提取PDF文本
+            extracted_text = await extract_text_from_pdf(pdf_data)
+
+            if not extracted_text.strip():
+                return "❌ 无法从PDF中提取文本内容，请确保PDF包含可提取的文本。"
+
+            print(f'[DEBUG] PDF文本提取成功: {len(extracted_text)} 字符')
+            print(f'[DEBUG] 准备调用 call_llm_api 总结PDF内容...')
+
+            # 调用LLM API进行总结
+            summary = await call_llm_api(user_prompt, extracted_text)
+            print(f'[DEBUG] call_llm_api 返回结果长度: {len(summary)}')
+
+            return f"📊 PDF总结结果：\n\n{summary}"
+
+        except Exception as e:
+            print(f'❌ PDF处理失败: {str(e)}')
+            return f"❌ PDF处理失败：{str(e)}"
 
     return "❌ 不支持的消息类型"
 
@@ -1236,15 +1272,25 @@ def create_app():
                         print(f'📝 收到上下文文本: {len(context_text)} 字符')
                     elif field.name == 'context_pdf':
                         pdf_data = await field.read()
+                        # 验证PDF文件大小（最大10MB）
+                        if len(pdf_data) > 10 * 1024 * 1024:
+                            return web.json_response({
+                                'error': '上下文PDF文件大小不能超过10MB'
+                            }, status=400)
                         context_text = await extract_text_from_pdf(pdf_data)
-                        print(f'📎 收到上下文PDF: {len(context_text)} 字符')
+                        print(f'📎 收到上下文PDF: {len(pdf_data)} 字节, 提取 {len(context_text)} 字符')
                     elif field.name == 'content_text':
                         content_text = (await field.read()).decode('utf-8')
                         print(f'📝 收到总结文本: {len(content_text)} 字符')
                     elif field.name == 'content_pdf':
                         pdf_data = await field.read()
+                        # 验证PDF文件大小（最大10MB）
+                        if len(pdf_data) > 10 * 1024 * 1024:
+                            return web.json_response({
+                                'error': '总结PDF文件大小不能超过10MB'
+                            }, status=400)
                         content_text = await extract_text_from_pdf(pdf_data)
-                        print(f'📎 收到总结PDF: {len(content_text)} 字符')
+                        print(f'📎 收到总结PDF: {len(pdf_data)} 字节, 提取 {len(content_text)} 字符')
                     elif field.name == 'custom_prompt':
                         custom_prompt = (await field.read()).decode('utf-8')
 

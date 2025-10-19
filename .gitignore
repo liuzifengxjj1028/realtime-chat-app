@@ -29,3 +29,6 @@ uploads/*
 
 # Data files (persistent storage)
 data/
+
+# Claude Code
+.claude/
