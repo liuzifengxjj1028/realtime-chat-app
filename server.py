@@ -223,7 +223,7 @@ async def websocket_handler(request):
             if battle_username_to_remove in battle_3d_scores:
                 del battle_3d_scores[battle_username_to_remove]
             # 通知其他3D玩家
-            for player_name, player_data in battle_3d_players.items():
+            for player_name, player_data in list(battle_3d_players.items()):
                 try:
                     await player_data['websocket'].send_json({
                         'type': '3d_battle_player_left',
@@ -232,7 +232,7 @@ async def websocket_handler(request):
                 except:
                     pass
             # 广播更新后的积分榜
-            for player_name, player_data in battle_3d_players.items():
+            for player_name, player_data in list(battle_3d_players.items()):
                 try:
                     await player_data['websocket'].send_json({
                         'type': '3d_battle_score_update',
@@ -1051,7 +1051,7 @@ async def handle_3d_battle_message(data, current_user, ws):
             battle_3d_scores[username] = 0
 
         # 通知所有其他玩家
-        for player_name, player_data in battle_3d_players.items():
+        for player_name, player_data in list(battle_3d_players.items()):
             if player_name != username:
                 await player_data['websocket'].send_json({
                     'type': '3d_battle_player_joined',
@@ -1084,7 +1084,7 @@ async def handle_3d_battle_message(data, current_user, ws):
             del battle_3d_players[username]
 
             # 通知所有其他玩家
-            for player_name, player_data in battle_3d_players.items():
+            for player_name, player_data in list(battle_3d_players.items()):
                 await player_data['websocket'].send_json({
                     'type': '3d_battle_player_left',
                     'username': username
@@ -1100,7 +1100,7 @@ async def handle_3d_battle_message(data, current_user, ws):
             battle_3d_players[username]['position'] = position
 
             # 广播给所有其他玩家
-            for player_name, player_data in battle_3d_players.items():
+            for player_name, player_data in list(battle_3d_players.items()):
                 if player_name != username:
                     await player_data['websocket'].send_json({
                         'type': '3d_battle_move',
@@ -1114,7 +1114,7 @@ async def handle_3d_battle_message(data, current_user, ws):
         hit_players = data.get('hitPlayers', [])
 
         # 广播攻击动作给所有其他玩家
-        for player_name, player_data in battle_3d_players.items():
+        for player_name, player_data in list(battle_3d_players.items()):
             if player_name != username:
                 await player_data['websocket'].send_json({
                     'type': '3d_battle_attack',
@@ -1133,7 +1133,7 @@ async def handle_3d_battle_message(data, current_user, ws):
                     battle_3d_scores[hit_username] -= 1
 
                 # 通知所有玩家这个人被击中了（用于显示其他人的被击中动画）
-                for player_name, player_data in battle_3d_players.items():
+                for player_name, player_data in list(battle_3d_players.items()):
                     await player_data['websocket'].send_json({
                         'type': '3d_battle_hit',
                         'attacker': username,
@@ -1142,7 +1142,7 @@ async def handle_3d_battle_message(data, current_user, ws):
 
         # 如果有人被击中，广播积分更新
         if hit_players:
-            for player_name, player_data in battle_3d_players.items():
+            for player_name, player_data in list(battle_3d_players.items()):
                 await player_data['websocket'].send_json({
                     'type': '3d_battle_score_update',
                     'scores': battle_3d_scores
@@ -1153,7 +1153,7 @@ async def handle_3d_battle_message(data, current_user, ws):
         message = data.get('message', '')
 
         # 广播给所有玩家（包括自己）
-        for player_name, player_data in battle_3d_players.items():
+        for player_name, player_data in list(battle_3d_players.items()):
             await player_data['websocket'].send_json({
                 'type': '3d_battle_chat',
                 'username': username,
