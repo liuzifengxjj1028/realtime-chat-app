@@ -452,7 +452,7 @@ async def call_llm_api(prompt, user_content):
                     ],
                     'temperature': 0.7
                 },
-                timeout=aiohttp.ClientTimeout(total=60)
+                timeout=aiohttp.ClientTimeout(total=30)
             ) as response:
                 if response.status == 200:
                     result = await response.json()

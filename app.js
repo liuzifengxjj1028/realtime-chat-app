@@ -1901,7 +1901,7 @@ yizongSubmitBtn.addEventListener('click', async () => {
     // 显示加载状态
     yizongResultArea.style.display = 'block';
     yizongLoading.style.display = 'block';
-    yizongResultContent.textContent = '';
+    yizongResultContent.textContent = '正在处理中，这可能需要1-2分钟...';
     yizongSummaryInfo.textContent = `上下文:${contextMode} + 总结内容:${contentMode}`;
 
     // 准备FormData
@@ -1926,12 +1926,18 @@ yizongSubmitBtn.addEventListener('click', async () => {
         formData.append('custom_prompt', customPrompt);
     }
 
+    // 创建超时控制器（90秒超时）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
     try {
         const response = await fetch('http://localhost:8080/api/summarize_chat', {
             method: 'POST',
-            body: formData
+            body: formData,
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         const result = await response.json();
         yizongLoading.style.display = 'none';
 
@@ -1941,8 +1947,17 @@ yizongSubmitBtn.addEventListener('click', async () => {
             yizongResultContent.textContent = '错误：' + (result.error || '未知错误');
         }
     } catch (error) {
+        clearTimeout(timeoutId);
         yizongLoading.style.display = 'none';
-        yizongResultContent.textContent = '请求失败：' + error.message;
+
+        // 区分超时和其他错误
+        if (error.name === 'AbortError') {
+            yizongResultContent.textContent = '⏱️ 请求超时：处理时间过长（超过90秒）。\n\n建议：\n• 尝试减少内容长度\n• 将长文档分段处理\n• 稍后再试';
+        } else if (error.message === 'Failed to fetch') {
+            yizongResultContent.textContent = '❌ 连接失败：无法连接到服务器。\n\n可能原因：\n• 服务器未启动\n• 网络连接问题\n• 请检查服务器状态';
+        } else {
+            yizongResultContent.textContent = '❌ 请求失败：' + error.message;
+        }
     }
 });
 
@@ -2099,6 +2114,10 @@ async function showSummaryDrawer(users, startDate, endDate, messages, customProm
         }
     }).join('\n');
 
+    // 创建超时控制器（60秒超时，因为这个是旧版本API，处理时间较短）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+
     // 调用后端API进行总结
     try {
         const response = await fetch('http://localhost:8080/api/summarize_chat', {
@@ -2112,9 +2131,11 @@ async function showSummaryDrawer(users, startDate, endDate, messages, customProm
                 end_date: endDate.toISOString(),
                 chat_content: chatContent,
                 custom_prompt: customPrompt
-            })
+            }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
         const result = await response.json();
         summaryLoading.style.display = 'none';
 
@@ -2124,8 +2145,17 @@ async function showSummaryDrawer(users, startDate, endDate, messages, customProm
             summaryResultContent.textContent = '总结失败：' + (result.error || '未知错误');
         }
     } catch (error) {
+        clearTimeout(timeoutId);
         summaryLoading.style.display = 'none';
-        summaryResultContent.textContent = '请求失败：' + error.message;
+
+        // 区分超时和其他错误
+        if (error.name === 'AbortError') {
+            summaryResultContent.textContent = '⏱️ 请求超时：处理时间过长（超过60秒）。\n\n建议：\n• 减少选择的时间范围\n• 减少选择的用户数量\n• 稍后再试';
+        } else if (error.message === 'Failed to fetch') {
+            summaryResultContent.textContent = '❌ 连接失败：无法连接到服务器。\n\n可能原因：\n• 服务器未启动\n• 网络连接问题';
+        } else {
+            summaryResultContent.textContent = '❌ 请求失败：' + error.message;
+        }
     }
 }
 
