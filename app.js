@@ -1931,7 +1931,7 @@ yizongSubmitBtn.addEventListener('click', async () => {
     const timeoutId = setTimeout(() => controller.abort(), 90000);
 
     try {
-        const response = await fetch('http://localhost:8080/api/summarize_chat', {
+        const response = await fetch('/api/summarize_chat', {
             method: 'POST',
             body: formData,
             signal: controller.signal
@@ -2120,7 +2120,7 @@ async function showSummaryDrawer(users, startDate, endDate, messages, customProm
 
     // 调用后端API进行总结
     try {
-        const response = await fetch('http://localhost:8080/api/summarize_chat', {
+        const response = await fetch('/api/summarize_chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
